@@ -5,6 +5,8 @@ import re
 import jinja2
 import webapp2
 
+from google.appengine.ext import db
+
 template_dir = os.path.join(os.path.dirname(__file__), "templates")
 jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir),
                                autoescape=True)
@@ -14,7 +16,11 @@ USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
 PASS_RE = re.compile(r"^.{3,20}$")
 EMAIL_RE = re.compile(r"^[\S]+@[\S]+.[\S]+$")
 
-
+# create google app entitiy
+class BlogPosts(db.Model):
+    subject = db.StringProperty(required=True)
+    blog = db.TextProperty(required=True)
+    created = db.DateTimeProperty(auto_now_add=True)
 
 
 class Handler(webapp2.RequestHandler):
@@ -33,20 +39,6 @@ class MainPage(Handler):
     def get(self):
         self.render("shopping_list.html")
 
-class FizzBuzzHandler(Handler):
-    def get(self):
-        n = self.request.get("n",0)
-        n = n and int(n)
-        self.render("fizzbuzz.html", n=n)
-
-class RotHandler(Handler):
-    def get(self):
-        self.render("rot13.html", text="")
-
-    def post(self):
-        text = self.request.get("text")
-        text = rot13(text)
-        self.render("rot13.html", text=text)
 
 class SignHandler(Handler):
     def get(self):
@@ -70,27 +62,6 @@ class WelcomeHandler(Handler):
     def get(self):
         username = self.request.get("username")
         self.render("welcome.html", username=username)
-
-def rot13(text):
-    alp_int = dict(zip(string.ascii_lowercase, range(1, 27)))
-    int_alp = dict(zip(range(1, 27), string.ascii_lowercase))
-    output_text = ""
-
-    for x in text:
-        cap = False
-        if x in string.ascii_uppercase:
-            x = x.lower()
-            cap = True
-        if x in string.ascii_lowercase:
-            x = alp_int[x]
-            x = x + 13
-            if x > 26:
-                x = x - 26
-            x = int_alp[x]
-            if cap:
-                x = x.upper()
-        output_text = output_text + x
-    return output_text
 
 
 def valid_username(username):
@@ -136,8 +107,6 @@ def check_details(username, password, verify, email):
 
 app = webapp2.WSGIApplication([
     ('/', MainPage),
-    ('/fizzbuzz', FizzBuzzHandler),
-    ('/rot13', RotHandler),
     ('/signup', SignHandler),
     ('/welcome', WelcomeHandler),
 ], debug=True)
