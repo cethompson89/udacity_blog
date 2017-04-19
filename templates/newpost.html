@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NewPost</title>
+</head>
+
+<body>
+    <h1>Add New Post</h1>
+    <form method="post">
+        Subject <input type= "text" name="subject" value = "{{ subject }}"> <text style="color:red"> {{ subject_error }} </text>
+        <br>
+        <br>
+        <textarea rows="4" cols="50" name="blog">{{ blog }}</textarea> <text style="color:red"> {{ blog_error }} </text>
+        <br>
+        <br>
+        <button>Submit  </button>
+    </form>
+</body>
+</html>

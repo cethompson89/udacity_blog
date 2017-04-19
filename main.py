@@ -17,7 +17,7 @@ PASS_RE = re.compile(r"^.{3,20}$")
 EMAIL_RE = re.compile(r"^[\S]+@[\S]+.[\S]+$")
 
 # create google app entitiy
-class BlogPosts(db.Model):
+class BlogPost(db.Model):
     subject = db.StringProperty(required=True)
     blog = db.TextProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
@@ -35,78 +35,38 @@ class Handler(webapp2.RequestHandler):
         self.write(self.render_str(template, **kw))
 
 
-class MainPage(Handler):
+class MainPageHandler(Handler):
     def get(self):
-        self.render("shopping_list.html")
+        blogposts = db.GqlQuery("SELECT * FROM BlogPost "
+                                "ORDER BY created DESC ")
 
+        self.render("blogposts.html", blogposts=blogposts)
 
-class SignHandler(Handler):
+class NewPostHandler(Handler):
     def get(self):
-        self.render("signup.html", username="", password="", verify="", email="")
+        self.render("newpost.html", subject="", blog="")
 
     def post(self):
-        username = self.request.get("username")
-        password = self.request.get("password")
-        verify = self.request.get("verify")
-        email = self.request.get("email")
+        subject = self.request.get("subject")
+        blog = self.request.get("blog")
 
-        redirect, username, password, verify, email, user_error, password_error, verify_error, email_error = check_details(username, password, verify, email)
+        subject_error = ""
+        blog_error = ""
 
-        if redirect:
-            self.redirect("/welcome?username=" + username)
+        if subject and blog:
+            a = BlogPost(subject=subject, blog=blog)
+            a.put()
+            self.redirect("/")
         else:
-            self.render("signup.html", username=username,
-                        password=password, verify=verify, email=email, user_error=user_error, password_error=password_error, verify_error=verify_error, email_error=email_error)
-
-class WelcomeHandler(Handler):
-    def get(self):
-        username = self.request.get("username")
-        self.render("welcome.html", username=username)
-
-
-def valid_username(username):
-    return USER_RE.match(username)
-
-
-def valid_password(password):
-    return PASS_RE.match(password)
-
-
-def valid_email(email):
-    return EMAIL_RE.match(email)
-
-
-def check_details(username, password, verify, email):
-    user_error, password_error, verify_error, email_error = ("", "", "", "")
-    valid_details = True
-
-    if valid_username(username) is None:
-        user_error = "That's not a valid username."
-        valid_details = False
-
-    if valid_password(password) is None:
-        password_error = "That wasn't a valid password."
-        valid_details = False
-        password = ""
-        verify = ""
-
-    if password != verify:
-        verify_error = "Your passwords didn't match."
-        valid_details = False
-        password = ""
-        verify = ""
-
-    if email != "" and valid_email(email) is None:
-        email_error = "That's not a valid email."
-        valid_details = False
-
-    return valid_details, username, password, verify, email, user_error, password_error, verify_error, email_error
-
-
+            if not subject:
+                subject_error = "Please add a subject"
+            if not blog:
+                blog_error = "Please add a blog post"
+            self.render("newpost.html", subject=subject, blog=blog,
+                        subject_error=subject_error, blog_error=blog_error)
 
 
 app = webapp2.WSGIApplication([
-    ('/', MainPage),
-    ('/signup', SignHandler),
-    ('/welcome', WelcomeHandler),
+    ('/', MainPageHandler),
+    ('/newpost', NewPostHandler),
 ], debug=True)
