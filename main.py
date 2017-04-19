@@ -23,6 +23,7 @@ class BlogPost(db.Model):
     created = db.DateTimeProperty(auto_now_add=True)
 
 
+
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
@@ -55,7 +56,9 @@ class NewPostHandler(Handler):
 
         if subject and blog:
             a = BlogPost(subject=subject, blog=blog)
-            a.put()
+            k = a.put()
+            i = a.key().id()
+            print i
             self.redirect("/")
         else:
             if not subject:
@@ -69,4 +72,5 @@ class NewPostHandler(Handler):
 app = webapp2.WSGIApplication([
     ('/', MainPageHandler),
     ('/newpost', NewPostHandler),
+
 ], debug=True)
