@@ -45,26 +45,26 @@ class MainPageHandler(Handler):
 
 class NewPostHandler(Handler):
     def get(self):
-        self.render("newpost.html", subject="", blog="")
+        self.render("newpost.html", subject="", content="")
 
     def post(self):
         subject = self.request.get("subject")
-        blog = self.request.get("blog")
+        content = self.request.get("content")
 
         subject_error = ""
         blog_error = ""
 
-        if subject and blog:
-            a = BlogPost(subject=subject, blog=blog)
+        if subject and content:
+            a = BlogPost(subject=subject, blog=content)
             a.put()
             i = a.key().id()
             self.redirect("/%d" % i)
         else:
             if not subject:
                 subject_error = "Please add a subject"
-            if not blog:
+            if not content:
                 blog_error = "Please add a blog post"
-            self.render("newpost.html", subject=subject, blog=blog,
+            self.render("newpost.html", subject=subject, content=content,
                         subject_error=subject_error, blog_error=blog_error)
 
 class PermalinkHandler(Handler):
