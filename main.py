@@ -56,10 +56,9 @@ class NewPostHandler(Handler):
 
         if subject and blog:
             a = BlogPost(subject=subject, blog=blog)
-            k = a.put()
+            a.put()
             i = a.key().id()
-            print i
-            self.redirect("/")
+            self.redirect("/%d" % i)
         else:
             if not subject:
                 subject_error = "Please add a subject"
@@ -68,9 +67,14 @@ class NewPostHandler(Handler):
             self.render("newpost.html", subject=subject, blog=blog,
                         subject_error=subject_error, blog_error=blog_error)
 
+class PermalinkHandler(Handler):
+    def get(self, blog_id):
+        s = BlogPost.get_by_id(int(blog_id))
+        self.render("blogposts.html", blogposts=[s])
 
 app = webapp2.WSGIApplication([
     ('/', MainPageHandler),
     ('/newpost', NewPostHandler),
+    ('/(\d+)', PermalinkHandler),
 
 ], debug=True)
