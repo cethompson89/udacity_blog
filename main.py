@@ -30,7 +30,7 @@ class BlogPost(db.Model):
 
 class User(db.Model):
     username = db.StringProperty(required=True)
-    email = db.StringProperty(required=True)
+    email = db.StringProperty(required=False)
     password = db.StringProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
 
@@ -112,14 +112,22 @@ class SignHandler(Handler):
             # save details to database
             a = User(username=username, password=password, email=email)
             a.put()
-            self.redirect("/welcome?username=" + username)
+            i = a.key().id()
+            user_id = "%d|%s" % (i, password)
+            print user_id
+            self.response.headers.add_header('Set-Cookie', 'user_id=%s; Path=/' % user_id)
+            self.redirect("/welcome")
         else:
             self.render("signup.html", username=username,
                         password=password, verify=verify, email=email, user_error=user_error, password_error=password_error, verify_error=verify_error, email_error=email_error)
 
+
 class WelcomeHandler(Handler):
     def get(self):
-        username = self.request.get("username")
+        user_id = self.request.cookies.get('user_id')
+        user_id = user_id.split('|')[0]
+        u = User.get_by_id(int(user_id))
+        username = u.username
         self.render("welcome.html", username=username)
 
 
@@ -181,13 +189,14 @@ def make_pw_hash(username, password, salt=None):
     if not salt:
         salt = make_salt()
     h = hashlib.sha256(username + password + salt).hexdigest()
-    return '%s,%s' % (h, salt)
+    return '%s|%s' % (h, salt)
 
 
 def valid_pw(username, password, h):
-    salt = h.split(',')[1]
+    salt = h.split('|')[1]
     if make_pw_hash(username, password, salt) == h:
         return True
+
 
 
 app = webapp2.WSGIApplication([
