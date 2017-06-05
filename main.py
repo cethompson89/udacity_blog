@@ -1,6 +1,9 @@
 import os
 import string
 import re
+import random
+import hashlib
+
 
 import jinja2
 import webapp2
@@ -17,12 +20,19 @@ USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
 PASS_RE = re.compile(r"^.{3,20}$")
 EMAIL_RE = re.compile(r"^[\S]+@[\S]+.[\S]+$")
 
+
 # create google app entitiy
 class BlogPost(db.Model):
     subject = db.StringProperty(required=True)
     blog = db.TextProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
 
+
+class User(db.Model):
+    username = db.StringProperty(required=True)
+    email = db.StringProperty(required=True)
+    password = db.StringProperty(required=True)
+    created = db.DateTimeProperty(auto_now_add=True)
 
 
 class Handler(webapp2.RequestHandler):
@@ -37,12 +47,21 @@ class Handler(webapp2.RequestHandler):
         self.write(self.render_str(template, **kw))
 
 
+class UserListHandler(Handler):
+    def get(self):
+        users = db.GqlQuery("SELECT * FROM User "
+                            "ORDER BY created DESC ")
+
+        self.render("userlist.html", users=users)
+
+
 class MainPageHandler(Handler):
     def get(self):
         blogposts = db.GqlQuery("SELECT * FROM BlogPost "
                                 "ORDER BY created DESC ")
 
         self.render("blogposts.html", blogposts=blogposts)
+
 
 class NewPostHandler(Handler):
     def get(self):
@@ -88,6 +107,9 @@ class SignHandler(Handler):
         redirect, username, password, verify, email, user_error, password_error, verify_error, email_error = check_details(username, password, verify, email)
 
         if redirect:
+            # save details to database
+            a = User(username=username, password=password, email=email)
+            a.put()
             self.redirect("/welcome?username=" + username)
         else:
             self.render("signup.html", username=username,
@@ -112,12 +134,21 @@ def valid_email(email):
     return EMAIL_RE.match(email)
 
 
+def matching_users(username):
+    # check if username already exists
+    matching_users = User.all()
+    matching_users = matching_users.filter("username = ", username).get()
+    return matching_users
+
 def check_details(username, password, verify, email):
     user_error, password_error, verify_error, email_error = ("", "", "", "")
     valid_details = True
 
     if valid_username(username) is None:
         user_error = "That's not a valid username."
+        valid_details = False
+    elif matching_users(username) is not None:
+        user_error = "That user already exists."
         valid_details = False
 
     if valid_password(password) is None:
@@ -138,10 +169,30 @@ def check_details(username, password, verify, email):
 
     return valid_details, username, password, verify, email, user_error, password_error, verify_error, email_error
 
+
+# create and test password hashs
+def make_salt():
+    return ''.join(random.choice(string.letters) for x in xrange(5))
+
+
+def make_pw_hash(username, password, salt=None):
+    if not salt:
+        salt = make_salt()
+    h = hashlib.sha256(username + password + salt).hexdigest()
+    return '%s,%s' % (h, salt)
+
+
+def valid_pw(username, password, h):
+    salt = h.split(',')[1]
+    if make_pw_hash(username, password, salt) == h:
+        return True
+
+
 app = webapp2.WSGIApplication([
     ('/', MainPageHandler),
     ('/newpost', NewPostHandler),
     ('/(\d+)', PermalinkHandler),
     ('/signup', SignHandler),
     ('/welcome', WelcomeHandler),
+    ('/users', UserListHandler),
 ], debug=True)
