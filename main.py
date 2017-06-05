@@ -107,6 +107,8 @@ class SignHandler(Handler):
         redirect, username, password, verify, email, user_error, password_error, verify_error, email_error = check_details(username, password, verify, email)
 
         if redirect:
+            # hash password
+            password = make_pw_hash(username, password)
             # save details to database
             a = User(username=username, password=password, email=email)
             a.put()
