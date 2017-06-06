@@ -137,6 +137,24 @@ class SignHandler(Handler):
                         password=password, verify=verify, email=email, user_error=user_error, password_error=password_error, verify_error=verify_error, email_error=email_error)
 
 
+class LoginHandler(Handler):
+    def get(self):
+        self.render("login.html", username="", password="", login_error="")
+
+    def post(self):
+        username = self.request.get("username")
+        password = self.request.get("password")
+
+        user = User.all().filter("username =", username).get()
+        if user and valid_pw(username, password, user.password):
+            i = "%d" % (user.key().id())
+            self.set_secure_cookie("user_id", i)
+            self.redirect("/welcome")
+        else:
+            login_error = "That is not a valid user/password"
+            self.render("login.html", username=username, password=password, login_error=login_error)
+
+
 class WelcomeHandler(Handler):
     def get(self):
         if self.user:
@@ -216,12 +234,13 @@ def make_pw_hash(username, password, salt=None):
     if not salt:
         salt = make_salt()
     h = hashlib.sha256(username + password + salt).hexdigest()
-    return '%s|%s' % (h, salt)
+    saved_hash = '%s|%s' % (h, salt)
+    return saved_hash
 
 
-def valid_pw(username, password, h):
-    salt = h.split('|')[1]
-    if make_pw_hash(username, password, salt) == h:
+def valid_pw(username, password, saved_hash):
+    salt = saved_hash.split('|')[1]
+    if make_pw_hash(username, password, salt) == saved_hash:
         return True
 
 
@@ -232,4 +251,5 @@ app = webapp2.WSGIApplication([
     ('/signup', SignHandler),
     ('/welcome', WelcomeHandler),
     ('/users', UserListHandler),
+    ('/login', LoginHandler),
 ], debug=True)

@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Login</title>
+</head>
+
+<body>
+    <h1>Login</h1>
+    <form method="post">
+        Username <input type= "text" name="username" value = "{{ username }}">
+        <br>
+        Password <input type= "password" name="password" value = "{{ password }}">
+        <br>
+        <text style="color:red"> {{ login_error }} </text>
+        <br>
+        <button>Submit  </button>
+    </form>
+</body>
+</html>
