@@ -1,4 +1,5 @@
 import os
+import hmac
 import string
 import re
 import random
@@ -9,6 +10,8 @@ import jinja2
 import webapp2
 
 from google.appengine.ext import db
+
+secret = "8pY#P#oILap52dQ4F97qtZwRq5VvZCE&"
 
 template_dir = os.path.join(os.path.dirname(__file__), "templates")
 jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir),
@@ -45,6 +48,20 @@ class Handler(webapp2.RequestHandler):
 
     def render(self, template, **kw):
         self.write(self.render_str(template, **kw))
+
+    def set_secure_cookie(self, name, val):
+        secure_val = make_secure_val(val)
+        self.response.headers.add_header('Set-Cookie',
+                                         '%s=%s; Path=/' % (name, secure_val))
+
+    def read_secure_cookie(self, name):
+        cookie_val = self.request.cookies.get(name)
+        return check_secure_val(cookie_val)
+
+    def initialize(self, *a, **kw):
+        webapp2.RequestHandler.initialize(self, *a, **kw)
+        uid = self.read_secure_cookie("user_id")
+        self.user = uid and User.get_by_id(int(uid))
 
 
 class UserListHandler(Handler):
@@ -112,10 +129,8 @@ class SignHandler(Handler):
             # save details to database
             a = User(username=username, password=password, email=email)
             a.put()
-            i = a.key().id()
-            user_id = "%d|%s" % (i, password)
-            print user_id
-            self.response.headers.add_header('Set-Cookie', 'user_id=%s; Path=/' % user_id)
+            i = "%d" % (a.key().id())
+            self.set_secure_cookie("user_id", i)
             self.redirect("/welcome")
         else:
             self.render("signup.html", username=username,
@@ -124,11 +139,10 @@ class SignHandler(Handler):
 
 class WelcomeHandler(Handler):
     def get(self):
-        user_id = self.request.cookies.get('user_id')
-        user_id = user_id.split('|')[0]
-        u = User.get_by_id(int(user_id))
-        username = u.username
-        self.render("welcome.html", username=username)
+        if self.user:
+            self.render("welcome.html", username=self.user.username)
+        else:
+            self.redirect("/signup")
 
 
 # test for acceptable user name, password, email
@@ -149,6 +163,7 @@ def matching_users(username):
     matching_users = User.all()
     matching_users = matching_users.filter("username = ", username).get()
     return matching_users
+
 
 def check_details(username, password, verify, email):
     user_error, password_error, verify_error, email_error = ("", "", "", "")
@@ -177,7 +192,19 @@ def check_details(username, password, verify, email):
         email_error = "That's not a valid email."
         valid_details = False
 
-    return valid_details, username, password, verify, email, user_error, password_error, verify_error, email_error
+    return (valid_details, username, password, verify, email, user_error,
+            password_error, verify_error, email_error)
+
+
+# create and test hash
+def make_secure_val(val):
+    return "%s|%s" % (val, hmac.new(secret, val).hexdigest())
+
+
+def check_secure_val(secure_val):
+    val = secure_val.split('|')[0]
+    if secure_val == make_secure_val(val):
+        return val
 
 
 # create and test password hashs
@@ -196,7 +223,6 @@ def valid_pw(username, password, h):
     salt = h.split('|')[1]
     if make_pw_hash(username, password, salt) == h:
         return True
-
 
 
 app = webapp2.WSGIApplication([
