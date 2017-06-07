@@ -62,6 +62,12 @@ class Handler(webapp2.RequestHandler):
         cookie_val = self.request.cookies.get(name)
         return check_secure_val(cookie_val)
 
+    def login(self, user):
+        self.set_secure_cookie("user_id", user)
+
+    def logout(self):
+        self.remove_cookie("user_id")
+
     def initialize(self, *a, **kw):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         uid = self.read_secure_cookie("user_id")
@@ -138,7 +144,7 @@ class SignHandler(Handler):
             a = User(username=username, password=password, email=email)
             a.put()
             i = "%d" % (a.key().id())
-            self.set_secure_cookie("user_id", i)
+            self.login(i)
             self.redirect("/welcome")
         else:
             self.render("signup.html", username=username,
@@ -156,7 +162,7 @@ class LoginHandler(Handler):
         user = User.all().filter("username =", username).get()
         if user and valid_pw(username, password, user.password):
             i = "%d" % (user.key().id())
-            self.set_secure_cookie("user_id", i)
+            self.login(i)
             self.redirect("/welcome")
         else:
             login_error = "That is not a valid user/password"
@@ -165,7 +171,7 @@ class LoginHandler(Handler):
 
 class LogoutHandler(Handler):
     def get(self):
-        self.remove_cookie("user_id")
+        self.logout()
         self.redirect("/signup")
 
 
