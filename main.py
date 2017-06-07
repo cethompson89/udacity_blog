@@ -54,6 +54,10 @@ class Handler(webapp2.RequestHandler):
         self.response.headers.add_header('Set-Cookie',
                                          '%s=%s; Path=/' % (name, secure_val))
 
+    def remove_cookie(self, name):
+        self.response.headers.add_header('Set-Cookie',
+                                         '%s=; Path=/' % name)
+
     def read_secure_cookie(self, name):
         cookie_val = self.request.cookies.get(name)
         return check_secure_val(cookie_val)
@@ -61,9 +65,11 @@ class Handler(webapp2.RequestHandler):
     def initialize(self, *a, **kw):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         uid = self.read_secure_cookie("user_id")
+        print uid
         if uid:
             self.user = uid and User.get_by_id(int(uid))
-
+        else:
+            self.user = None
 
 
 class UserListHandler(Handler):
@@ -157,6 +163,12 @@ class LoginHandler(Handler):
             self.render("login.html", username=username, password=password, login_error=login_error)
 
 
+class LogoutHandler(Handler):
+    def get(self):
+        self.remove_cookie("user_id")
+        self.redirect("/signup")
+
+
 class WelcomeHandler(Handler):
     def get(self):
         if self.user:
@@ -223,7 +235,10 @@ def make_secure_val(val):
 
 def check_secure_val(secure_val):
     if secure_val:
-        val = secure_val.split('|')[0]
+        try:
+            val = secure_val.split('|')[0]
+        except:
+            return None
         if secure_val == make_secure_val(val):
             return val
 
@@ -255,4 +270,5 @@ app = webapp2.WSGIApplication([
     ('/welcome', WelcomeHandler),
     ('/users', UserListHandler),
     ('/login', LoginHandler),
+    ('/logout', LogoutHandler),
 ], debug=True)
