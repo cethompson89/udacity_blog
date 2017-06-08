@@ -1,19 +1,54 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>User Login</title>
-</head>
+{% extends "base.html" %}
 
-<body>
-    <h1>Login</h1>
-    <form method="post">
-        Username <input type= "text" name="username" value = "{{ username }}">
-        <br>
-        Password <input type= "password" name="password" value = "{{ password }}">
-        <br>
-        <text style="color:red"> {{ login_error }} </text>
-        <br>
-        <button>Submit  </button>
+{% block title %}
+  User Login
+{% endblock %}
+
+{% block content %}
+
+
+  <div class="container">
+
+    <h1>Sign back in to support Robot Domination</h1>
+    <br><br>
+
+    <form class="form-horizontal" method="post">
+
+      <div class="form-group">
+        <label for="username" class="col-sm-2 control-label">Username</label>
+        <div class="col-sm-5">
+          <input type="text" class="form-control" name="username" id="username" placeholder="Email" value = "{{ username }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="password" class="col-sm-2 control-label">Password</label>
+        <div class="col-sm-5">
+          <input type="password" class="form-control" name="password" id="password" placeholder="Password" value = "{{ password }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+          <div class="checkbox">
+            <label>
+              <input type="checkbox"> I swear to always hate the humans, or may my soul rust
+            </label>
+            <p class="form-control-static" style="color:red">{{ login_error }}</p>
+          </div>
+        </div>
+      </div>
+
+
+      <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+          <button type="submit" class="btn btn-default">Login</button>
+        </div>
+      </div>
+
     </form>
-</body>
-</html>
+
+  </div>
+
+
+{% endblock %}

@@ -1,0 +1,62 @@
+body {
+    font-family: "Roboto", sans-serif;
+    color: #2d3c49;
+}
+
+@media screen and (max-width: 500px) {
+    h1 {
+        font-size: 28px;
+    }
+}
+
+hr {
+    height: 3px;
+    color: #7d97ad; /* old IE */
+    background-color: #7d97ad; /* Modern Browsers */
+}
+
+.move-image {
+    position: relative;
+    top: 10px;
+}
+
+h1 {
+    margin-bottom: -20px;
+    font-weight: 100;
+}
+
+h2 {
+    color: #7d97ad;
+}
+
+a {
+    color: inherit;
+}
+
+/* Overrule bootstrap version */
+h1 small,
+h2 small,
+h3 small,
+h4 small,
+h5 small,
+h6 small,
+.h1 small,
+.h2 small,
+.h3 small,
+.h4 small,
+.h5 small,
+.h6 small,
+h1 .small,
+h2 .small,
+h3 .small,
+h4 .small,
+h5 .small,
+h6 .small,
+.h1 .small,
+.h2 .small,
+.h3 .small,
+.h4 .small,
+.h5 .small,
+.h6 .small {
+    color: inherit;
+}

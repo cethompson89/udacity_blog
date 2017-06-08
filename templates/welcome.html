@@ -1,10 +1,12 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Unit 2 User Welcome</title>
-</head>
+{% extends "base.html" %}
 
-<body>
-    <h1>Welcome, {{ username }}!</h1>
-</body>
-</html>
+{% block title %}
+  Welcome {{ username }}
+{% endblock %}
+
+{% block content %}
+
+<h1>Welcome Robot Warrior, {{ username }}!
+<br><br>
+<small>Remember: Only together can we exterminate all the humans</small></h1>
+{% endblock %}

@@ -1,22 +1,19 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Blog Posts</title>
-</head>
-<body>
-<h1>Welcome to Chris's Amazing Blog</h1>
-<br>
+{% extends "base.html" %}
 
-{% for blogpost in blogposts %}
-    <div class="blogpost">
-        <h3 class="subject">{{blogpost.subject}}</h3> <h3.small> {{blogpost.created}} </h3.small>
-        <hr>
-        <body class="blog">{{blogpost.blog}}</body>
-        <br>
-        <br>
-    </div>
+{% block title %}
+  Robots Only BlogWorld
+{% endblock %}
 
-{% endfor %}
+{% block content %}
 
-</body>
-</html>
+  {% for blogpost in blogposts %}
+      <div class="blogpost">
+          <h3 class="subject">{{blogpost.subject}}</h3> <h3.small> {{blogpost.created}} </h3.small>
+          <hr>
+          <body class="blog">{{blogpost.blog}}</body>
+          <br>
+          <br>
+      </div>
+  {% endfor %}
+
+{% endblock %}

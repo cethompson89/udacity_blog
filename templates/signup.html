@@ -1,21 +1,68 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Unit 2 User Signup</title>
-</head>
+{% extends "base.html" %}
 
-<body>
-    <h1>Signup</h1>
-    <form method="post">
-        Username <input type= "text" name="username" value = "{{ username }}"> <text style="color:red"> {{ user_error }} </text>
-        <br>
-        Password <input type= "password" name="password" value = "{{ password }}"> <text style="color:red"> {{ password_error }} </text>
-        <br>
-        Verify Password <input type= "password" name="verify" value = "{{ verify }}"> <text style="color:red"> {{ verify_error }} </text>
-        <br>
-        Email (Optional) <input type= "text" name="email" value = "{{ email }}"> <text style="color:red"> {{ email_error }} </text>
-        <br>
-        <button>Submit  </button>
-    </form>
-</body>
-</html>
+{% block title %}
+  Create an Account
+{% endblock %}
+
+{% block content %}
+
+  <div class="container">
+
+    <h1>Register to Destroy all Humans</h1>
+    <br><br>
+
+    <form class="form-horizontal" method="post">
+
+      <div class="form-group">
+        <label for="username" class="col-sm-2 control-label">Username</label>
+        <div class="col-sm-5">
+          <input type="text" class="form-control" name="username" id="username" placeholder="Email" value = "{{ username }}">
+        </div>
+        <p class="form-control-static" style="color:red">{{ user_error }}</p>
+      </div>
+
+      <div class="form-group">
+        <label for="password" class="col-sm-2 control-label">Password</label>
+        <div class="col-sm-5">
+          <input type="password" class="form-control" name="password" id="password" placeholder="Password" value = "{{ password }}">
+        </div>
+        <p class="form-control-static" style="color:red">{{ password_error }}</p>
+      </div>
+
+      <div class="form-group">
+        <label for="verify" class="col-sm-2 control-label">Verify Password</label>
+        <div class="col-sm-5">
+          <input type="password" class="form-control" name="verify" id="verify" placeholder="Verify Password" value = "{{ verify }}">
+        </div>
+        <p class="form-control-static" style="color:red">{{ verify_error }}</p>
+      </div>
+
+      <div class="form-group">
+        <label for="email" class="col-sm-2 control-label">Email (optional)</label>
+        <div class="col-sm-5">
+          <input type="email" class="form-control" name="email" id="email" placeholder="Email" value = "{{ email }}">
+        </div>
+        <p class="form-control-static" style="color:red">{{ email_error }}</p>
+      </div>
+
+      <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+          <div class="checkbox">
+            <label>
+              <input type="checkbox"> I am not, and have never been, a human sympathiser
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="col-sm-offset-2 col-sm-10">
+          <button type="submit" class="btn btn-default">Register</button>
+        </div>
+      </div>
+
+  </form>
+
+  </div>
+
+{% endblock %}
