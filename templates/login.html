@@ -9,6 +9,12 @@
 
   <div class="container">
 
+    {% if redirect_msg %}
+      <text style="color:red">
+        RoboBrothers (and RoboSisters) - we must protect this place from the Humans. Please sign in below or register to assist the RoboRevolution.
+      </text>
+    {% endif %}
+
     <h1>Sign back in to support Robot Domination</h1>
     <br><br>
 
@@ -17,7 +23,7 @@
       <div class="form-group">
         <label for="username" class="col-sm-2 control-label">Username</label>
         <div class="col-sm-5">
-          <input type="text" class="form-control" name="username" id="username" placeholder="Email" value = "{{ username }}">
+          <input type="text" class="form-control" name="username" id="username" placeholder="Username" value = "{{ username }}">
         </div>
       </div>
 

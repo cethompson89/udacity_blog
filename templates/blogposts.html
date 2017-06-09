@@ -7,13 +7,65 @@
 {% block content %}
 
   {% for blogpost in blogposts %}
-      <div class="blogpost">
-          <h3 class="subject">{{blogpost.subject}}</h3> <h3.small> {{blogpost.created}} </h3.small>
-          <hr>
-          <body class="blog">{{blogpost.blog}}</body>
-          <br>
-          <br>
-      </div>
+
+  <div class="row">
+    <div class="col-sm-12">
+        <a href="/{{ blogpost.key().id() }}"><h3 class="subject">{{blogpost.subject}}</h3></a>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-sm-12">
+      <text style="color:grey">Written on {{ blogpost.created.strftime('%Y-%m-%d') }}
+      by {{ blogpost.user.username }}
+      <text>
+    </div>
+  </div>
+
+  <br>
+
+  <div class="row">
+    <div class="col-sm-12">
+      <body class="blog">{{blogpost.blog}}
+      </body>
+    </div>
+  </div>
+
+  <hr>
+  <br>
   {% endfor %}
+
+{# ONLY FOR Permalink pages #}
+  {% if single %}
+
+  {% for comment in blog_comments %}
+
+  <div class="row">
+    <div class="col-sm-12">
+      <body class="comment">{{comment.comment}}
+      </body>
+    </div>
+  </div>
+
+  {% endfor %}
+
+
+
+    <form method="post">
+
+      <div class="form-group">
+        <label for="comment">My Robo Comment</label>
+        <textarea class="form-control" id="comment" name="comment" rows="7">{{ comment }}</textarea>
+        <p class="form-control-static" style="color:red">{{ comment_error }}</p>
+      </div>
+      <input type="hidden" name="blog_id" value= "{{ blog_id }}">
+      <div class="form-group">
+        <div class="col-sm-12">
+          <button type="submit" class="btn btn-default">Share with RoboFriends</button>
+        </div>
+      </div>
+
+    </form>
+
+  {% endif %}
 
 {% endblock %}

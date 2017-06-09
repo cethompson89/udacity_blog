@@ -25,18 +25,23 @@ EMAIL_RE = re.compile(r"^[\S]+@[\S]+.[\S]+$")
 
 
 # create google app entitiy
-class BlogPost(db.Model):
-    subject = db.StringProperty(required=True)
-    blog = db.TextProperty(required=True)
-    created = db.DateTimeProperty(auto_now_add=True)
-
-
 class User(db.Model):
     username = db.StringProperty(required=True)
     email = db.StringProperty(required=False)
     password = db.StringProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
 
+class BlogPost(db.Model):
+    subject = db.StringProperty(required=True)
+    blog = db.TextProperty(required=True)
+    created = db.DateTimeProperty(auto_now_add=True)
+    user = db.ReferenceProperty(User, collection_name='blog_user')
+
+class Comment(db.Model):
+    blogpost = db.ReferenceProperty(BlogPost, collection_name='blogpost')
+    user = db.ReferenceProperty(User, collection_name='comment_user')
+    comment = db.TextProperty(required=True)
+    created = db.DateTimeProperty(auto_now_add=True)
 
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
@@ -47,7 +52,7 @@ class Handler(webapp2.RequestHandler):
         return t.render(params)
 
     def render(self, template, **kw):
-        self.write(self.render_str(template, **kw))
+        self.write(self.render_str(template, user=self.user, **kw))
 
     def set_secure_cookie(self, name, val):
         secure_val = make_secure_val(val)
@@ -71,11 +76,13 @@ class Handler(webapp2.RequestHandler):
     def initialize(self, *a, **kw):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         uid = self.read_secure_cookie("user_id")
-        print uid
         if uid:
             self.user = uid and User.get_by_id(int(uid))
         else:
             self.user = None
+
+    def get_comments(self, blogpost):
+        return Comment.all().filter("blogpost =", blogpost)
 
 
 class UserListHandler(Handler):
@@ -96,7 +103,10 @@ class MainPageHandler(Handler):
 
 class NewPostHandler(Handler):
     def get(self):
-        self.render("newpost.html", subject="", content="")
+        if self.user:
+            self.render("newpost.html", subject="", content="")
+        else:
+            self.redirect("/login?redirect=True")
 
     def post(self):
         subject = self.request.get("subject")
@@ -106,7 +116,7 @@ class NewPostHandler(Handler):
         blog_error = ""
 
         if subject and content:
-            a = BlogPost(subject=subject, blog=content)
+            a = BlogPost(subject=subject, blog=content, user=self.user)
             a.put()
             i = a.key().id()
             self.redirect("/%d" % i)
@@ -122,7 +132,28 @@ class NewPostHandler(Handler):
 class PermalinkHandler(Handler):
     def get(self, blog_id):
         s = BlogPost.get_by_id(int(blog_id))
-        self.render("blogposts.html", blogposts=[s])
+        blog_comments = self.get_comments(s)
+        self.render("blogposts.html", blogposts=[s], blog_comments=blog_comments, single=True, blog_id=blog_id)
+
+    def post(self, blog_id):
+        comment = self.request.get("comment")
+        blog_id = self.request.get("blog_id")
+        blogpost = BlogPost.get_by_id(int(blog_id))
+        user = self.user
+        comment_error = ""
+
+        if comment and user:
+            a = Comment(blogpost=blogpost, user=user, comment=comment)
+            a.put()
+            self.redirect("/%s" % blog_id)
+        else:
+            if not comment:
+                comment_error = "Yo, Robobuddy - you gotta add some text"
+            if not user:
+                comment_error = "Yo Robobuddy - log in so we know you're not a treacherous human"
+        self.render("blogposts.html", blogposts=[blogpost], single=True, blog_id=blog_id, comment=comment, comment_error=comment_error)
+
+
 
 
 class SignHandler(Handler):
@@ -145,7 +176,7 @@ class SignHandler(Handler):
             a.put()
             i = "%d" % (a.key().id())
             self.login(i)
-            self.redirect("/welcome")
+            self.redirect("/login?redirect=True")
         else:
             self.render("signup.html", username=username,
                         password=password, verify=verify, email=email, user_error=user_error, password_error=password_error, verify_error=verify_error, email_error=email_error)
@@ -153,7 +184,8 @@ class SignHandler(Handler):
 
 class LoginHandler(Handler):
     def get(self):
-        self.render("login.html", username="", password="", login_error="")
+        redirect_msg = self.request.GET.get('redirect')
+        self.render("login.html", username="", password="", login_error="", redirect_msg=redirect_msg)
 
     def post(self):
         username = self.request.get("username")
@@ -172,7 +204,7 @@ class LoginHandler(Handler):
 class LogoutHandler(Handler):
     def get(self):
         self.logout()
-        self.redirect("/signup")
+        self.redirect("/login")
 
 
 class WelcomeHandler(Handler):
