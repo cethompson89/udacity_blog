@@ -17,7 +17,7 @@
     <div class="col-sm-12">
       <text style="color:grey">Written on {{ blogpost.created.strftime('%Y-%m-%d') }}
       by {{ blogpost.user.username }}
-      <text>
+      </text>
     </div>
   </div>
 
@@ -37,17 +37,19 @@
 {# ONLY FOR Permalink pages #}
   {% if single %}
 
-  {% for comment in blog_comments %}
+  {% for comment in blog_comments.run() %}
 
-  <div class="row">
+ <div class="row">
     <div class="col-sm-12">
+      <p><text style="color:grey"><em>Comment on {{ comment.created.strftime('%Y-%m-%d') }}
+      by {{ comment.user.username }}:
+      </em></text>
       <body class="comment">{{comment.comment}}
-      </body>
+      </body></p>
     </div>
   </div>
 
   {% endfor %}
-
 
 
     <form method="post">

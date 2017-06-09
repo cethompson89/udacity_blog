@@ -82,7 +82,7 @@ class Handler(webapp2.RequestHandler):
             self.user = None
 
     def get_comments(self, blogpost):
-        return Comment.all().filter("blogpost =", blogpost)
+        return Comment.all().filter("blogpost =", blogpost).order("created")
 
 
 class UserListHandler(Handler):
@@ -176,7 +176,7 @@ class SignHandler(Handler):
             a.put()
             i = "%d" % (a.key().id())
             self.login(i)
-            self.redirect("/login?redirect=True")
+            self.redirect("/welcome")
         else:
             self.render("signup.html", username=username,
                         password=password, verify=verify, email=email, user_error=user_error, password_error=password_error, verify_error=verify_error, email_error=email_error)
