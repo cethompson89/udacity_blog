@@ -25,6 +25,11 @@ indexes:
   - name: user
   - name: liked_blogpost
 
+- kind: BlogPost
+  properties:
+  - name: deleted
+  - name: created
+
 - kind: Comment
   properties:
   - name: blogpost
@@ -35,3 +40,9 @@ indexes:
   - name: blogpost
   - name: created
     direction: desc
+
+- kind: Comment
+  properties:
+  - name: blogpost
+  - name: deleted
+  - name: created

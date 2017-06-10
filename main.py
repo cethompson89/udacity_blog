@@ -38,6 +38,7 @@ class BlogPost(db.Model):
     created = db.DateTimeProperty(auto_now_add=True)
     user = db.ReferenceProperty(User, collection_name='blog_user')
     likes = db.IntegerProperty(required=False)
+    deleted = db.BooleanProperty(default=False)
 
 
 class Comment(db.Model):
@@ -46,6 +47,7 @@ class Comment(db.Model):
     comment = db.TextProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
     likes = db.IntegerProperty(required=False)
+    deleted = db.BooleanProperty(default=False)
 
 
 class BlogLikes(db.Model):
@@ -54,7 +56,7 @@ class BlogLikes(db.Model):
 
 
 class CommentLikes(db.Model):
-    comment = db.ReferenceProperty(Comment, collection_name='liked_comment')
+    comment = db.ReferenceProperty(Comment)
     user = db.ReferenceProperty(User, collection_name='comment_liked_by')
 
 
@@ -67,7 +69,7 @@ class Handler(webapp2.RequestHandler):
         return t.render(params)
 
     def render(self, template, **kw):
-        self.write(self.render_str(template, user=self.user, **kw))
+        self.write(self.render_str(template, user=self.user, liked_posts=self.liked_posts, liked_comments=self.liked_comments, **kw))
 
     def set_secure_cookie(self, name, val):
         secure_val = make_secure_val(val)
@@ -88,16 +90,34 @@ class Handler(webapp2.RequestHandler):
     def logout(self):
         self.remove_cookie("user_id")
 
+    def get_liked_posts(self):
+        liked_posts = BlogLikes.all().filter("user =", self.user).fetch(100)
+        i = []
+        for post in liked_posts:
+            i.append(post.blogpost.key().id())
+        return i
+
+    def get_liked_comments(self):
+        liked_comments = CommentLikes.all().filter("user =", self.user).fetch(100)
+        i = []
+        for comment in liked_comments:
+            i.append(comment.comment.key().id())
+        return i
+
     def initialize(self, *a, **kw):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         uid = self.read_secure_cookie("user_id")
         if uid:
             self.user = uid and User.get_by_id(int(uid))
+            self.liked_posts = self.get_liked_posts()
+            self.liked_comments = self.get_liked_comments()
         else:
-            self.user = None
+            (self.user, self.liked_posts, self.liked_comments) = (None, None, None)
 
     def get_comments(self, blogpost):
-        return Comment.all().filter("blogpost =", blogpost).order("created")
+        q = Comment.all().filter("blogpost =", blogpost).filter("deleted =", False)
+        q.order("created")
+        return q
 
     def like_post(self, blogpost):
         blogpost.likes += 1
@@ -106,12 +126,13 @@ class Handler(webapp2.RequestHandler):
         a = BlogLikes(blogpost=blogpost, user=self.user)
         a.put()
 
-    def get_liked_posts(self):
-        liked_posts = BlogLikes.all().filter("user =", self.user).fetch(100)
-        i = []
-        for post in liked_posts:
-            i.append(post.blogpost.key().id())
-        return i
+
+    def like_comment(self, comment):
+        comment.likes += 1
+        comment.put()
+
+        a = CommentLikes(comment=comment, user=self.user)
+        a.put()
 
 
 class UserListHandler(Handler):
@@ -124,15 +145,45 @@ class UserListHandler(Handler):
 
 class MainPageHandler(Handler):
     def get(self):
-        blogposts = db.GqlQuery("SELECT * FROM BlogPost "
-                                "ORDER BY created DESC ")
-
+        blogposts = BlogPost.all().filter("deleted =", False)
+        blogposts.order("created")
         self.render("blogposts.html", blogposts=blogposts)
+
+
+class PermalinkHandler(Handler):
+    def get(self, blog_id):
+        blogpost = BlogPost.get_by_id(int(blog_id))
+        if blogpost:
+            blog_comments = self.get_comments(blogpost)
+            self.render("blogposts.html", blogposts=[blogpost], blog_comments=blog_comments, single=True, blog_id=blog_id)
+        else:
+            self.redirect("/")
+
+    def post(self, blog_id):
+        comment = self.request.get("comment")
+        blog_id = self.request.get("blog_id")
+        blogpost = BlogPost.get_by_id(int(blog_id))
+        user = self.user
+        comment_error = ""
+
+        if comment and user:
+            a = Comment(blogpost=blogpost, user=user, comment=comment, likes=0)
+            a.put()
+            self.redirect("/%s" % blog_id)
+        else:
+            blog_comments = self.get_comments(blogpost)
+            if not comment:
+                comment_error = "Yo, Robobuddy - you gotta add some text"
+            if not user:
+                comment_error = "Yo Robobuddy - log in so we know you're not a treacherous human"
+            self.render("blogposts.html", blogposts=[blogpost], blog_comments=blog_comments, single=True, blog_id=blog_id, comment=comment, comment_error=comment_error)
 
 
 class NewPostHandler(Handler):
     def get(self):
-        if self.user:
+        if not self.user:
+            self.redirect("/login?redirect=True")
+        else:
             blog_id = self.request.GET.get('blog_id')  # if editting post
             subject = ""
             content = ""
@@ -145,8 +196,7 @@ class NewPostHandler(Handler):
                 blog_id = ""
 
             self.render("newpost.html", subject=subject, content=content, blog_id=blog_id)
-        else:
-            self.redirect("/login?redirect=True")
+
 
     def post(self):
         subject = self.request.get("subject")
@@ -156,8 +206,10 @@ class NewPostHandler(Handler):
         content_error = ""
 
         if self.request.get("delete"):  # check for delete
-            a = BlogPost.get_by_id(int(blog_id))
-            a.delete()
+            if blog_id:
+                a = BlogPost.get_by_id(int(blog_id))
+                a.deleted = True
+                a.put()
             self.redirect("/")
         else:
             if subject and content:
@@ -179,35 +231,6 @@ class NewPostHandler(Handler):
                             subject_error=subject_error, content_error=content_error)
 
 
-class PermalinkHandler(Handler):
-    def get(self, blog_id):
-        blogpost = BlogPost.get_by_id(int(blog_id))
-        if blogpost:
-            blog_comments = self.get_comments(blogpost)
-            self.render("blogposts.html", blogposts=[blogpost], blog_comments=blog_comments, single=True, blog_id=blog_id, liked_posts=self.get_liked_posts())
-        else:
-            self.redirect("/")
-
-    def post(self, blog_id):
-        comment = self.request.get("comment")
-        blog_id = self.request.get("blog_id")
-        blogpost = BlogPost.get_by_id(int(blog_id))
-        user = self.user
-        comment_error = ""
-
-        if comment and user:
-            a = Comment(blogpost=blogpost, user=user, comment=comment, likes=0)
-            a.put()
-            self.redirect("/%s" % blog_id)
-        else:
-            if not comment:
-                comment_error = "Yo, Robobuddy - you gotta add some text"
-            if not user:
-                comment_error = "Yo Robobuddy - log in so we know you're not a treacherous human"
-
-        self.render("blogposts.html", blogposts=[blogpost], single=True, blog_id=blog_id, liked_posts=self.get_liked_posts(), comment=comment, comment_error=comment_error)
-
-
 class CommentHandler(Handler):
     def get(self):
         if self.user:
@@ -227,7 +250,8 @@ class CommentHandler(Handler):
         a = Comment.get_by_id(int(comment_id))
         i = a.blogpost.key().id()
         if self.request.get("delete"):  # check for delete
-            a.delete()
+            a.deleted = True
+            a.put()
             self.redirect("/%d" % i)
         elif content:
             a.comment = content
@@ -241,10 +265,20 @@ class LikeHandler(Handler):
     def get(self):
         # if post is liked add like to datastore and redirect
         blog_id = self.request.GET.get('blog_id')
+        comment_id = self.request.GET.get('comment_id')
         if blog_id:
             blogpost = BlogPost.get_by_id(int(blog_id))
             self.like_post(blogpost)
-        self.redirect("/%s" % blog_id)
+            self.redirect("/%s" % blog_id)
+        elif comment_id:
+            comment = Comment.get_by_id(int(comment_id))
+            blog_id = comment.blogpost.key().id()
+            self.like_comment(comment)
+            self.redirect("/%s" % blog_id)
+        else:
+            self.redirect("/")
+
+
 
 
 class SignHandler(Handler):

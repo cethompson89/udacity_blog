@@ -22,14 +22,19 @@
     <div class="col-sm-2">
     <span class="glyphicon glyphicon-thumbs-up"></span> {{ blogpost.likes }} Likes
     </div>
+
     {% if user.username == blogpost.user.username %}
+
       <div class="col-sm-6">
         <a href="/newpost?blog_id={{ blogpost.key().id() }}"><button type="button" class="btn btn-primary btn-sm">Edit/Delete Post</button></a>
       </div>
-    {% elif blogpost.key().id() not in liked_posts %}
+
+    {% elif user.username and blogpost.key().id() not in liked_posts %}
+
       <div class="col-sm-6  ">
         <a href="/like?blog_id={{ blogpost.key().id() }}"><button type="button" class="btn btn-success btn-sm">Like</button></a>
       </div>
+
     {% endif %}
 
   </div>
@@ -60,9 +65,23 @@
       <body class="comment">{{comment.comment}}
       </body></p>
     </div>
-    <div class="col-sm-6">
-      <a href="/comment?comment_id={{ comment.key().id() }}"><button type="button" class="btn btn-secondary btn-sm">Edit/Delete Comment</button></a>
+    <div class="col-sm-2">
+    <span class="glyphicon glyphicon-thumbs-up"></span> {{ comment.likes }} Likes
     </div>
+
+    {% if user.username == comment.user.username %}
+
+      <div class="col-sm-4">
+        <a href="/comment?comment_id={{ comment.key().id() }}"><button type="button" class="btn btn-secondary btn-sm">Edit/Delete Comment</button></a>
+      </div>
+
+    {% elif user.username and comment.key().id() not in liked_comments %}
+
+      <div class="col-sm-4  ">
+        <a href="/like?comment_id={{ comment.key().id() }}"><button type="button" class="btn btn-success btn-sm">Like</button></a>
+      </div>
+
+    {% endif %}
   </div>
   <br>
 
