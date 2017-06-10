@@ -13,9 +13,11 @@
 
     <form method="post">
 
+    <input type="hidden" name="blog_id" value="{{ blog_id }}">
+
       <div class="form-group">
         <label for="subject">Blog Subject</label>
-        <input type="text" class="form-control" id="subject" name="subject" placeholder="E.g. 10 Things I hate about humans">
+        <input type="text" class="form-control" id="subject" name="subject" placeholder="E.g. 10 Things I hate about humans" value = "{{ subject }}">
         <p class="form-control-static" style="color:red">{{ subject_error }}</p>
       </div>
 

@@ -10,6 +10,21 @@ indexes:
 # automatically uploaded to the admin console when you next deploy
 # your application using appcfg.py.
 
+- kind: BlogLikes
+  properties:
+  - name: user
+  - name: blogpost
+
+- kind: BlogLikes
+  properties:
+  - name: user
+  - name: blogpost.key().id()
+
+- kind: BlogLikes
+  properties:
+  - name: user
+  - name: liked_blogpost
+
 - kind: Comment
   properties:
   - name: blogpost

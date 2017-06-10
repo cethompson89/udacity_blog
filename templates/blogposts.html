@@ -9,16 +9,29 @@
   {% for blogpost in blogposts %}
 
   <div class="row">
-    <div class="col-sm-12">
-        <a href="/{{ blogpost.key().id() }}"><h3 class="subject">{{blogpost.subject}}</h3></a>
+    <div class="col-sm-6">
+        <a href="/{{ blogpost.key().id() }}"><h3 class="subject">{{ blogpost.subject }}</h3></a>
     </div>
   </div>
   <div class="row">
-    <div class="col-sm-12">
+    <div class="col-sm-4">
       <text style="color:grey">Written on {{ blogpost.created.strftime('%Y-%m-%d') }}
       by {{ blogpost.user.username }}
       </text>
     </div>
+    <div class="col-sm-2">
+    <span class="glyphicon glyphicon-thumbs-up"></span> {{ blogpost.likes }} Likes
+    </div>
+    {% if user.username == blogpost.user.username %}
+      <div class="col-sm-6">
+        <a href="/newpost?blog_id={{ blogpost.key().id() }}"><button type="button" class="btn btn-primary btn-sm">Edit/Delete Post</button></a>
+      </div>
+    {% elif blogpost.key().id() not in liked_posts %}
+      <div class="col-sm-6  ">
+        <a href="/like?blog_id={{ blogpost.key().id() }}"><button type="button" class="btn btn-success btn-sm">Like</button></a>
+      </div>
+    {% endif %}
+
   </div>
 
   <br>

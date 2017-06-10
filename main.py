@@ -36,12 +36,22 @@ class BlogPost(db.Model):
     blog = db.TextProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
     user = db.ReferenceProperty(User, collection_name='blog_user')
+    likes = db.IntegerProperty(required=False)
 
 class Comment(db.Model):
     blogpost = db.ReferenceProperty(BlogPost, collection_name='blogpost')
     user = db.ReferenceProperty(User, collection_name='comment_user')
     comment = db.TextProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
+    likes = db.IntegerProperty(required=False)
+
+class BlogLikes(db.Model):
+    blogpost = db.ReferenceProperty(BlogPost)
+    user = db.ReferenceProperty(User, collection_name='post_liked_by')
+
+class CommentLikes(db.Model):
+    comment = db.ReferenceProperty(Comment, collection_name='liked_comment')
+    user = db.ReferenceProperty(User, collection_name='comment_liked_by')
 
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
@@ -84,6 +94,22 @@ class Handler(webapp2.RequestHandler):
     def get_comments(self, blogpost):
         return Comment.all().filter("blogpost =", blogpost).order("created")
 
+    def like_post(self, blogpost):
+        blogpost.likes += 1
+        blogpost.put()
+
+        a = BlogLikes(blogpost=blogpost, user=self.user)
+        a.put()
+
+    def get_liked_posts(self):
+        liked_posts = BlogLikes.all().filter("user =", self.user).fetch(100)
+        i = []
+        for post in liked_posts:
+            i.append(post.blogpost.key().id())
+        return i
+
+
+
 
 class UserListHandler(Handler):
     def get(self):
@@ -104,22 +130,39 @@ class MainPageHandler(Handler):
 class NewPostHandler(Handler):
     def get(self):
         if self.user:
-            self.render("newpost.html", subject="", content="")
+            blog_id = self.request.GET.get('blog_id')  # if editting post
+            subject = ""
+            content = ""
+
+            if blog_id:  # editing post
+                a = BlogPost.get_by_id(int(blog_id))
+                subject = a.subject
+                content = a.blog
+            else:
+                blog_id = ""
+
+            self.render("newpost.html", subject=subject, content=content, blog_id=blog_id)
         else:
             self.redirect("/login?redirect=True")
 
     def post(self):
         subject = self.request.get("subject")
         content = self.request.get("content")
-
+        blog_id = self.request.get("blog_id")
         subject_error = ""
         blog_error = ""
 
         if subject and content:
-            a = BlogPost(subject=subject, blog=content, user=self.user)
+            print blog_id
+            if blog_id:  # editing post
+                a = BlogPost.get_by_id(int(blog_id))
+                (a.subject, a.blog) = (subject, content)
+            else:
+                a = BlogPost(subject=subject, blog=content, user=self.user, likes=0)
             a.put()
             i = a.key().id()
             self.redirect("/%d" % i)
+
         else:
             if not subject:
                 subject_error = "Please add a subject"
@@ -131,9 +174,10 @@ class NewPostHandler(Handler):
 
 class PermalinkHandler(Handler):
     def get(self, blog_id):
-        s = BlogPost.get_by_id(int(blog_id))
-        blog_comments = self.get_comments(s)
-        self.render("blogposts.html", blogposts=[s], blog_comments=blog_comments, single=True, blog_id=blog_id)
+        blogpost = BlogPost.get_by_id(int(blog_id))
+        blog_comments = self.get_comments(blogpost)
+
+        self.render("blogposts.html", blogposts=[blogpost], blog_comments=blog_comments, single=True, blog_id=blog_id, liked_posts=self.get_liked_posts())
 
     def post(self, blog_id):
         comment = self.request.get("comment")
@@ -143,7 +187,7 @@ class PermalinkHandler(Handler):
         comment_error = ""
 
         if comment and user:
-            a = Comment(blogpost=blogpost, user=user, comment=comment)
+            a = Comment(blogpost=blogpost, user=user, comment=comment, likes=0)
             a.put()
             self.redirect("/%s" % blog_id)
         else:
@@ -151,7 +195,8 @@ class PermalinkHandler(Handler):
                 comment_error = "Yo, Robobuddy - you gotta add some text"
             if not user:
                 comment_error = "Yo Robobuddy - log in so we know you're not a treacherous human"
-        self.render("blogposts.html", blogposts=[blogpost], single=True, blog_id=blog_id, comment=comment, comment_error=comment_error)
+
+        self.render("blogposts.html", blogposts=[blogpost], single=True, blog_id=blog_id, liked_posts=self.get_liked_posts(), comment=comment, comment_error=comment_error)
 
 
 
@@ -213,6 +258,15 @@ class WelcomeHandler(Handler):
             self.render("welcome.html", username=self.user.username)
         else:
             self.redirect("/signup")
+
+class LikeHandler(Handler):
+    def get(self):
+        # if post is liked add like to datastore and redirect
+        blog_id = self.request.GET.get('blog_id')
+        if blog_id:
+            blogpost = BlogPost.get_by_id(int(blog_id))
+            self.like_post(blogpost)
+        self.redirect("/%s" % blog_id)
 
 
 # test for acceptable user name, password, email
@@ -309,4 +363,5 @@ app = webapp2.WSGIApplication([
     ('/users', UserListHandler),
     ('/login', LoginHandler),
     ('/logout', LogoutHandler),
+    ('/like', LikeHandler),
 ], debug=True)
