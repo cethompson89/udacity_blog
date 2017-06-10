@@ -31,12 +31,14 @@ class User(db.Model):
     password = db.StringProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
 
+
 class BlogPost(db.Model):
     subject = db.StringProperty(required=True)
     blog = db.TextProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
     user = db.ReferenceProperty(User, collection_name='blog_user')
     likes = db.IntegerProperty(required=False)
+
 
 class Comment(db.Model):
     blogpost = db.ReferenceProperty(BlogPost, collection_name='blogpost')
@@ -45,13 +47,16 @@ class Comment(db.Model):
     created = db.DateTimeProperty(auto_now_add=True)
     likes = db.IntegerProperty(required=False)
 
+
 class BlogLikes(db.Model):
     blogpost = db.ReferenceProperty(BlogPost)
     user = db.ReferenceProperty(User, collection_name='post_liked_by')
 
+
 class CommentLikes(db.Model):
     comment = db.ReferenceProperty(Comment, collection_name='liked_comment')
     user = db.ReferenceProperty(User, collection_name='comment_liked_by')
+
 
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
@@ -109,8 +114,6 @@ class Handler(webapp2.RequestHandler):
         return i
 
 
-
-
 class UserListHandler(Handler):
     def get(self):
         users = db.GqlQuery("SELECT * FROM User "
@@ -150,34 +153,40 @@ class NewPostHandler(Handler):
         content = self.request.get("content")
         blog_id = self.request.get("blog_id")
         subject_error = ""
-        blog_error = ""
+        content_error = ""
 
-        if subject and content:
-            print blog_id
-            if blog_id:  # editing post
-                a = BlogPost.get_by_id(int(blog_id))
-                (a.subject, a.blog) = (subject, content)
-            else:
-                a = BlogPost(subject=subject, blog=content, user=self.user, likes=0)
-            a.put()
-            i = a.key().id()
-            self.redirect("/%d" % i)
-
+        if self.request.get("delete"):  # check for delete
+            a = BlogPost.get_by_id(int(blog_id))
+            a.delete()
+            self.redirect("/")
         else:
-            if not subject:
-                subject_error = "Please add a subject"
-            if not content:
-                blog_error = "Please add a blog post"
-            self.render("newpost.html", subject=subject, content=content,
-                        subject_error=subject_error, blog_error=blog_error)
+            if subject and content:
+                if blog_id:  # editing post
+                    a = BlogPost.get_by_id(int(blog_id))
+                    (a.subject, a.blog) = (subject, content)
+                else:
+                    a = BlogPost(subject=subject, blog=content, user=self.user, likes=0)
+                a.put()
+                i = a.key().id()
+                self.redirect("/%d" % i)
+
+            else:
+                if not subject:
+                    subject_error = "Please add a subject"
+                if not content:
+                    content_error = "Please add a blog post"
+                self.render("newpost.html", subject=subject, content=content,
+                            subject_error=subject_error, content_error=content_error)
 
 
 class PermalinkHandler(Handler):
     def get(self, blog_id):
         blogpost = BlogPost.get_by_id(int(blog_id))
-        blog_comments = self.get_comments(blogpost)
-
-        self.render("blogposts.html", blogposts=[blogpost], blog_comments=blog_comments, single=True, blog_id=blog_id, liked_posts=self.get_liked_posts())
+        if blogpost:
+            blog_comments = self.get_comments(blogpost)
+            self.render("blogposts.html", blogposts=[blogpost], blog_comments=blog_comments, single=True, blog_id=blog_id, liked_posts=self.get_liked_posts())
+        else:
+            self.redirect("/")
 
     def post(self, blog_id):
         comment = self.request.get("comment")
@@ -199,6 +208,43 @@ class PermalinkHandler(Handler):
         self.render("blogposts.html", blogposts=[blogpost], single=True, blog_id=blog_id, liked_posts=self.get_liked_posts(), comment=comment, comment_error=comment_error)
 
 
+class CommentHandler(Handler):
+    def get(self):
+        if self.user:
+            comment_id = self.request.GET.get("comment_id")
+            a = Comment.get_by_id(int(comment_id))
+            content = a.comment
+
+            self.render("comment.html", commend_id=comment_id, content=content)
+        else:
+            self.redirect("/login?redirect=True")
+
+    def post(self):
+        comment_id = self.request.get("comment_id")
+        content = self.request.get("content")
+        content_error = ""
+
+        a = Comment.get_by_id(int(comment_id))
+        i = a.blogpost.key().id()
+        if self.request.get("delete"):  # check for delete
+            a.delete()
+            self.redirect("/%d" % i)
+        elif content:
+            a.comment = content
+            a.put()
+            self.redirect("/%d" % i)
+        else:
+            content_error = "Please add content"
+            self.render("comment.html", commend_id=comment_id, content=content, content_error=content_error)
+
+class LikeHandler(Handler):
+    def get(self):
+        # if post is liked add like to datastore and redirect
+        blog_id = self.request.GET.get('blog_id')
+        if blog_id:
+            blogpost = BlogPost.get_by_id(int(blog_id))
+            self.like_post(blogpost)
+        self.redirect("/%s" % blog_id)
 
 
 class SignHandler(Handler):
@@ -258,15 +304,6 @@ class WelcomeHandler(Handler):
             self.render("welcome.html", username=self.user.username)
         else:
             self.redirect("/signup")
-
-class LikeHandler(Handler):
-    def get(self):
-        # if post is liked add like to datastore and redirect
-        blog_id = self.request.GET.get('blog_id')
-        if blog_id:
-            blogpost = BlogPost.get_by_id(int(blog_id))
-            self.like_post(blogpost)
-        self.redirect("/%s" % blog_id)
 
 
 # test for acceptable user name, password, email
@@ -364,4 +401,5 @@ app = webapp2.WSGIApplication([
     ('/login', LoginHandler),
     ('/logout', LogoutHandler),
     ('/like', LikeHandler),
+    ('/comment', CommentHandler),
 ], debug=True)

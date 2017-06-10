@@ -53,14 +53,18 @@
   {% for comment in blog_comments.run() %}
 
  <div class="row">
-    <div class="col-sm-12">
+    <div class="col-sm-6">
       <p><text style="color:grey"><em>Comment on {{ comment.created.strftime('%Y-%m-%d') }}
       by {{ comment.user.username }}:
       </em></text>
       <body class="comment">{{comment.comment}}
       </body></p>
     </div>
+    <div class="col-sm-6">
+      <a href="/comment?comment_id={{ comment.key().id() }}"><button type="button" class="btn btn-secondary btn-sm">Edit/Delete Comment</button></a>
+    </div>
   </div>
+  <br>
 
   {% endfor %}
 

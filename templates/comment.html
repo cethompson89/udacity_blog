@@ -1,28 +1,22 @@
 {% extends "base.html" %}
 
 {% block title %}
-  Add New Post
+  Edit Comment
 {% endblock %}
 
 {% block content %}
 
   <div class="container">
 
-    <h1>Add New Post</h1>
+    <h1>Edit Comment</h1>
     <br><br>
 
     <form method="post">
 
-    <input type="hidden" name="blog_id" value="{{ blog_id }}">
+    <input type="hidden" name="comment_id" value="{{ comment_id }}">
 
       <div class="form-group">
-        <label for="subject">Blog Subject</label>
-        <input type="text" class="form-control" id="subject" name="subject" placeholder="E.g. 10 Things I hate about humans" value = "{{ subject }}">
-        <p class="form-control-static" style="color:red">{{ subject_error }}</p>
-      </div>
-
-      <div class="form-group">
-        <label for="content">Blog Content</label>
+        <label for="content">Comment</label>
         <textarea class="form-control" id="content" name="content" rows="7">{{ content }}</textarea>
         <p class="form-control-static" style="color:red">{{ content_error }}</p>
       </div>
