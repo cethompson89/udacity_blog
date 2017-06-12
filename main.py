@@ -134,6 +134,20 @@ class Handler(webapp2.RequestHandler):
         a = CommentLikes(comment=comment, user=self.user)
         a.put()
 
+    def unlike_post(self, blogpost):
+        blogpost.likes += -1
+        blogpost.put()
+
+        a = BlogLikes.all().filter("blogpost =", blogpost).filter("user =", self.user).get()
+        a.delete()
+
+
+    def unlike_comment(self, comment):
+        comment.likes += -1
+        comment.put()
+
+        a = CommentLikes.all().filter("comment =", comment).filter("user =", self.user).get()
+        a.delete()
 
 class UserListHandler(Handler):
     def get(self):
@@ -146,7 +160,7 @@ class UserListHandler(Handler):
 class MainPageHandler(Handler):
     def get(self):
         blogposts = BlogPost.all().filter("deleted =", False)
-        blogposts.order("created")
+        blogposts.order("-created")
         self.render("blogposts.html", blogposts=blogposts)
 
 
@@ -266,14 +280,22 @@ class LikeHandler(Handler):
         # if post is liked add like to datastore and redirect
         blog_id = self.request.GET.get('blog_id')
         comment_id = self.request.GET.get('comment_id')
+        unlike = self.request.GET.get('unlike')
         if blog_id:
             blogpost = BlogPost.get_by_id(int(blog_id))
-            self.like_post(blogpost)
+            if unlike:
+                print "unlike"
+                self.unlike_post(blogpost)
+            else:
+                self.like_post(blogpost)
             self.redirect("/%s" % blog_id)
         elif comment_id:
             comment = Comment.get_by_id(int(comment_id))
             blog_id = comment.blogpost.key().id()
-            self.like_comment(comment)
+            if unlike:
+                self.unlike_comment(comment)
+            else:
+                self.like_comment(comment)
             self.redirect("/%s" % blog_id)
         else:
             self.redirect("/")
