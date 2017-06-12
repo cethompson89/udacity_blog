@@ -38,7 +38,7 @@
     {% elif user.username and blogpost.key().id() in liked_posts %}
 
       <div class="col-sm-6  ">
-        <a href="/like?unlike=True&blog_id={{ blogpost.key().id() }}"><button type="button" class="btn btn-success btn-sm">Unlike</button></a>
+        <a href="/like?unlike=True&blog_id={{ blogpost.key().id() }}"><button type="button" class="btn btn-warning btn-sm">Unlike</button></a>
       </div>
 
 
@@ -91,7 +91,7 @@
     {% elif user.username and comment.key().id() in liked_comments %}
 
       <div class="col-sm-4  ">
-        <a href="/like?unlike=True&comment_id={{ comment.key().id() }}"><button type="button" class="btn btn-success btn-sm">Unlike</button></a>
+        <a href="/like?unlike=True&comment_id={{ comment.key().id() }}"><button type="button" class="btn btn-warning btn-sm">Unlike</button></a>
       </div>
 
     {% endif %}

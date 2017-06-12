@@ -24,7 +24,8 @@ PASS_RE = re.compile(r"^.{3,20}$")
 EMAIL_RE = re.compile(r"^[\S]+@[\S]+.[\S]+$")
 
 
-# create google app entitiy
+# **************   create google app entities   *********************
+
 class User(db.Model):
     username = db.StringProperty(required=True)
     email = db.StringProperty(required=False)
@@ -60,6 +61,8 @@ class CommentLikes(db.Model):
     user = db.ReferenceProperty(User, collection_name='comment_liked_by')
 
 
+# **************   General handler and helper functions   *********************
+
 class Handler(webapp2.RequestHandler):
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
@@ -68,8 +71,12 @@ class Handler(webapp2.RequestHandler):
         t = jinja_env.get_template(template)
         return t.render(params)
 
+    # modified to always pass user and liked posts/comments to render
     def render(self, template, **kw):
-        self.write(self.render_str(template, user=self.user, liked_posts=self.liked_posts, liked_comments=self.liked_comments, **kw))
+        self.write(self.render_str(template, user=self.user,
+                                   liked_posts=self.liked_posts,
+                                   liked_comments=self.liked_comments,
+                                   **kw))
 
     def set_secure_cookie(self, name, val):
         secure_val = make_secure_val(val)
@@ -98,7 +105,8 @@ class Handler(webapp2.RequestHandler):
         return i
 
     def get_liked_comments(self):
-        liked_comments = CommentLikes.all().filter("user =", self.user).fetch(100)
+        liked_comments = (CommentLikes.all().
+                          filter("user =", self.user).fetch(100))
         i = []
         for comment in liked_comments:
             i.append(comment.comment.key().id())
@@ -112,10 +120,12 @@ class Handler(webapp2.RequestHandler):
             self.liked_posts = self.get_liked_posts()
             self.liked_comments = self.get_liked_comments()
         else:
-            (self.user, self.liked_posts, self.liked_comments) = (None, None, None)
+            (self.user, self.liked_posts, self.liked_comments) = (None, None,
+                                                                  None)
 
     def get_comments(self, blogpost):
-        q = Comment.all().filter("blogpost =", blogpost).filter("deleted =", False)
+        q = (Comment.all().filter("blogpost =", blogpost).
+             filter("deleted =", False))
         q.order("created")
         return q
 
@@ -125,7 +135,6 @@ class Handler(webapp2.RequestHandler):
 
         a = BlogLikes(blogpost=blogpost, user=self.user)
         a.put()
-
 
     def like_comment(self, comment):
         comment.likes += 1
@@ -138,18 +147,23 @@ class Handler(webapp2.RequestHandler):
         blogpost.likes += -1
         blogpost.put()
 
-        a = BlogLikes.all().filter("blogpost =", blogpost).filter("user =", self.user).get()
+        a = (BlogLikes.all().filter("blogpost =", blogpost).
+             filter("user =", self.user).get())
         a.delete()
-
 
     def unlike_comment(self, comment):
         comment.likes += -1
         comment.put()
 
-        a = CommentLikes.all().filter("comment =", comment).filter("user =", self.user).get()
+        a = (CommentLikes.all().filter("comment =", comment).
+             filter("user =", self.user).get())
         a.delete()
 
+
+# **************   Individual page handlers   *********************
+
 class UserListHandler(Handler):
+    # used to check users in app
     def get(self):
         users = db.GqlQuery("SELECT * FROM User "
                             "ORDER BY created DESC ")
@@ -158,6 +172,7 @@ class UserListHandler(Handler):
 
 
 class MainPageHandler(Handler):
+    # homepage
     def get(self):
         blogposts = BlogPost.all().filter("deleted =", False)
         blogposts.order("-created")
@@ -165,11 +180,14 @@ class MainPageHandler(Handler):
 
 
 class PermalinkHandler(Handler):
+    # page for specific blogpost
     def get(self, blog_id):
         blogpost = BlogPost.get_by_id(int(blog_id))
         if blogpost:
             blog_comments = self.get_comments(blogpost)
-            self.render("blogposts.html", blogposts=[blogpost], blog_comments=blog_comments, single=True, blog_id=blog_id)
+            self.render("blogposts.html", blogposts=[blogpost],
+                        blog_comments=blog_comments, single=True,
+                        blog_id=blog_id)
         else:
             self.redirect("/")
 
@@ -189,8 +207,12 @@ class PermalinkHandler(Handler):
             if not comment:
                 comment_error = "Yo, Robobuddy - you gotta add some text"
             if not user:
-                comment_error = "Yo Robobuddy - log in so we know you're not a treacherous human"
-            self.render("blogposts.html", blogposts=[blogpost], blog_comments=blog_comments, single=True, blog_id=blog_id, comment=comment, comment_error=comment_error)
+                comment_error = ("Yo Robobuddy - log in so we know you're " +
+                                 "not a treacherous human")
+            self.render("blogposts.html", blogposts=[blogpost],
+                        blog_comments=blog_comments, single=True,
+                        blog_id=blog_id, comment=comment,
+                        comment_error=comment_error)
 
 
 class NewPostHandler(Handler):
@@ -209,8 +231,8 @@ class NewPostHandler(Handler):
             else:
                 blog_id = ""
 
-            self.render("newpost.html", subject=subject, content=content, blog_id=blog_id)
-
+            self.render("newpost.html", subject=subject, content=content,
+                        blog_id=blog_id)
 
     def post(self):
         subject = self.request.get("subject")
@@ -231,7 +253,8 @@ class NewPostHandler(Handler):
                     a = BlogPost.get_by_id(int(blog_id))
                     (a.subject, a.blog) = (subject, content)
                 else:
-                    a = BlogPost(subject=subject, blog=content, user=self.user, likes=0)
+                    a = BlogPost(subject=subject, blog=content, user=self.user,
+                                 likes=0)
                 a.put()
                 i = a.key().id()
                 self.redirect("/%d" % i)
@@ -242,7 +265,8 @@ class NewPostHandler(Handler):
                 if not content:
                     content_error = "Please add a blog post"
                 self.render("newpost.html", subject=subject, content=content,
-                            subject_error=subject_error, content_error=content_error)
+                            subject_error=subject_error,
+                            content_error=content_error)
 
 
 class CommentHandler(Handler):
@@ -273,11 +297,13 @@ class CommentHandler(Handler):
             self.redirect("/%d" % i)
         else:
             content_error = "Please add content"
-            self.render("comment.html", commend_id=comment_id, content=content, content_error=content_error)
+            self.render("comment.html", commend_id=comment_id, content=content,
+                        content_error=content_error)
+
 
 class LikeHandler(Handler):
+    # if post is liked add like to datastore and redirect
     def get(self):
-        # if post is liked add like to datastore and redirect
         blog_id = self.request.GET.get('blog_id')
         comment_id = self.request.GET.get('comment_id')
         unlike = self.request.GET.get('unlike')
@@ -301,11 +327,10 @@ class LikeHandler(Handler):
             self.redirect("/")
 
 
-
-
 class SignHandler(Handler):
     def get(self):
-        self.render("signup.html", username="", password="", verify="", email="")
+        self.render("signup.html", username="", password="", verify="",
+                    email="")
 
     def post(self):
         username = self.request.get("username")
@@ -313,7 +338,10 @@ class SignHandler(Handler):
         verify = self.request.get("verify")
         email = self.request.get("email")
 
-        redirect, username, password, verify, email, user_error, password_error, verify_error, email_error = check_details(username, password, verify, email)
+        (redirect, username, password, verify,
+         email, user_error, password_error,
+         verify_error, email_error) = check_details(username, password,
+                                                    verify, email)
 
         if redirect:
             # hash password
@@ -325,14 +353,17 @@ class SignHandler(Handler):
             self.login(i)
             self.redirect("/welcome")
         else:
-            self.render("signup.html", username=username,
-                        password=password, verify=verify, email=email, user_error=user_error, password_error=password_error, verify_error=verify_error, email_error=email_error)
+            self.render("signup.html", username=username, password=password,
+                        verify=verify, email=email, user_error=user_error,
+                        password_error=password_error,
+                        verify_error=verify_error, email_error=email_error)
 
 
 class LoginHandler(Handler):
     def get(self):
         redirect_msg = self.request.GET.get('redirect')
-        self.render("login.html", username="", password="", login_error="", redirect_msg=redirect_msg)
+        self.render("login.html", username="", password="", login_error="",
+                    redirect_msg=redirect_msg)
 
     def post(self):
         username = self.request.get("username")
@@ -345,7 +376,8 @@ class LoginHandler(Handler):
             self.redirect("/welcome")
         else:
             login_error = "That is not a valid user/password"
-            self.render("login.html", username=username, password=password, login_error=login_error)
+            self.render("login.html", username=username,
+                        password=password, login_error=login_error)
 
 
 class LogoutHandler(Handler):
@@ -361,6 +393,8 @@ class WelcomeHandler(Handler):
         else:
             self.redirect("/signup")
 
+
+# **************   Additional helper functions   *********************
 
 # test for acceptable user name, password, email
 def valid_username(username):
