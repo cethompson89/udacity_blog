@@ -17,14 +17,8 @@ template_dir = os.path.join(os.path.dirname(__file__), "templates")
 jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir),
                                autoescape=True)
 
-# aceptable charracters for verifying user data
-alphabet_int = dict(zip(string.ascii_lowercase, range(1, 27)))
-USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
-PASS_RE = re.compile(r"^.{3,20}$")
-EMAIL_RE = re.compile(r"^[\S]+@[\S]+.[\S]+$")
-
-
 # **************   create google app entities   *********************
+
 
 class User(db.Model):
     username = db.StringProperty(required=True)
@@ -398,15 +392,18 @@ class WelcomeHandler(Handler):
 
 # test for acceptable user name, password, email
 def valid_username(username):
-    return USER_RE.match(username)
+    user_re = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
+    return user_re.match(username)
 
 
 def valid_password(password):
-    return PASS_RE.match(password)
+    pass_re = re.compile(r"^.{3,20}$")
+    return pass_re.match(password)
 
 
 def valid_email(email):
-    return EMAIL_RE.match(email)
+    email_re = re.compile(r"^[\S]+@[\S]+.[\S]+$")
+    return email_re.match(email)
 
 
 def matching_users(username):
