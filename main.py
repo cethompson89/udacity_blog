@@ -8,7 +8,7 @@ import hashlib
 import jinja2
 import webapp2
 
-from google.appengine.ext import db
+import models
 
 
 
@@ -17,83 +17,6 @@ secret = "8pY#P#oILap52dQ4F97qtZwRq5VvZCE&"
 template_dir = os.path.join(os.path.dirname(__file__), "templates")
 jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_dir),
                                autoescape=True)
-
-# **************   create google app entities   *********************
-
-
-class User(db.Model):
-    username = db.StringProperty(required=True)
-    email = db.StringProperty(required=False)
-    password = db.StringProperty(required=True)
-    created = db.DateTimeProperty(auto_now_add=True)
-
-
-class BlogPost(db.Model):
-    subject = db.StringProperty(required=True)
-    blog = db.TextProperty(required=True)
-    created = db.DateTimeProperty(auto_now_add=True)
-    user = db.ReferenceProperty(User, collection_name='blog_user')
-    likes = db.IntegerProperty(required=False)
-    deleted = db.BooleanProperty(default=False)
-
-    def get_comments(self):
-        q = (Comment.all().filter("blogpost =", self).
-             filter("deleted =", False))
-        q.order("created")
-        return q
-
-    def like_post(self, user):
-        a = (BlogLikes.all().filter("blogpost =", self).
-             filter("user =", user).get())
-        if not a:  # only action is it's not there
-            a = BlogLikes(blogpost=self, user=user)
-            a.put()
-            self.likes += 1
-            self.put()
-
-    def unlike_post(self, user):
-        a = (BlogLikes.all().filter("blogpost =", self).
-             filter("user =", user).get())
-        if a:
-            a.delete()
-            self.likes += -1
-            self.put()
-
-
-class Comment(db.Model):
-    blogpost = db.ReferenceProperty(BlogPost, collection_name='blogpost')
-    user = db.ReferenceProperty(User, collection_name='comment_user')
-    comment = db.TextProperty(required=True)
-    created = db.DateTimeProperty(auto_now_add=True)
-    likes = db.IntegerProperty(required=False)
-    deleted = db.BooleanProperty(default=False)
-
-    def like_comment(self, user):
-        a = (CommentLikes.all().filter("comment =", self).
-             filter("user =", user).get())
-        if not a:  # only action is it's not there
-            a = CommentLikes(comment=self, user=user)
-            a.put()
-            self.likes += 1
-            self.put()
-
-    def unlike_comment(self, user):
-        a = (CommentLikes.all().filter("comment =", self).
-             filter("user =", user).get())
-        if a:
-            a.delete()
-            self.likes += -1
-            self.put()
-
-
-class BlogLikes(db.Model):
-    blogpost = db.ReferenceProperty(BlogPost)
-    user = db.ReferenceProperty(User, collection_name='post_liked_by')
-
-
-class CommentLikes(db.Model):
-    comment = db.ReferenceProperty(Comment)
-    user = db.ReferenceProperty(User, collection_name='comment_liked_by')
 
 
 # **************   General handler and helper functions   *********************
@@ -133,14 +56,14 @@ class Handler(webapp2.RequestHandler):
         self.remove_cookie("user_id")
 
     def get_liked_posts(self):
-        liked_posts = BlogLikes.all().filter("user =", self.user).fetch(100)
+        liked_posts = models.BlogLikes.all().filter("user =", self.user).fetch(100)
         i = []
         for post in liked_posts:
             i.append(post.blogpost.key().id())
         return i
 
     def get_liked_comments(self):
-        liked_comments = (CommentLikes.all().
+        liked_comments = (models.CommentLikes.all().
                           filter("user =", self.user).fetch(100))
         i = []
         for comment in liked_comments:
@@ -151,7 +74,7 @@ class Handler(webapp2.RequestHandler):
         webapp2.RequestHandler.initialize(self, *a, **kw)
         uid = self.read_secure_cookie("user_id")
         if uid:
-            self.user = uid and User.get_by_id(int(uid))
+            self.user = uid and models.User.get_by_id(int(uid))
             self.liked_posts = self.get_liked_posts()
             self.liked_comments = self.get_liked_comments()
         else:
@@ -164,16 +87,14 @@ class Handler(webapp2.RequestHandler):
 class UserListHandler(Handler):
     # used to check users in app
     def get(self):
-        users = db.GqlQuery("SELECT * FROM User "
-                            "ORDER BY created DESC ")
-
+        users = models.User.all().order("-created")
         self.render("userlist.html", users=users)
 
 
 class MainPageHandler(Handler):
     # homepage
     def get(self):
-        blogposts = BlogPost.all().filter("deleted =", False)
+        blogposts = models.BlogPost.all().filter("deleted =", False)
         blogposts.order("-created")
         self.render("blogposts.html", blogposts=blogposts)
 
@@ -181,7 +102,7 @@ class MainPageHandler(Handler):
 class PermalinkHandler(Handler):
     # page for specific blogpost
     def get(self, blog_id):
-        blogpost = BlogPost.get_by_id(int(blog_id))
+        blogpost = models.BlogPost.get_by_id(int(blog_id))
         if blogpost:
             blog_comments = blogpost.get_comments()
             self.render("blogposts.html", blogposts=[blogpost],
@@ -193,11 +114,11 @@ class PermalinkHandler(Handler):
     def post(self, blog_id):
         comment = self.request.get("comment")
         blog_id = self.request.get("blog_id")
-        blogpost = BlogPost.get_by_id(int(blog_id))
+        blogpost = models.BlogPost.get_by_id(int(blog_id))
         comment_error = ""
 
         if comment and self.user:
-            a = Comment(blogpost=blogpost, user=self.user, comment=comment, likes=0)
+            a = models.Comment(blogpost=blogpost, user=self.user, comment=comment, likes=0)
             a.put()
             self.redirect("/%s" % blog_id)
         else:
@@ -223,7 +144,7 @@ class NewPostHandler(Handler):
             content = ""
 
             if blog_id:  # editing post
-                a = BlogPost.get_by_id(int(blog_id))
+                a = models.BlogPost.get_by_id(int(blog_id))
                 subject = a.subject
                 content = a.blog
             else:
@@ -241,17 +162,17 @@ class NewPostHandler(Handler):
 
         if self.request.get("delete"):  # check for delete
             if blog_id:
-                a = BlogPost.get_by_id(int(blog_id))
+                a = models.BlogPost.get_by_id(int(blog_id))
                 a.deleted = True
                 a.put()
             self.redirect("/")
         else:
             if subject and content:
                 if blog_id:  # editing post
-                    a = BlogPost.get_by_id(int(blog_id))
+                    a = models.BlogPost.get_by_id(int(blog_id))
                     (a.subject, a.blog) = (subject, content)
                 else:
-                    a = BlogPost(subject=subject, blog=content, user=self.user,
+                    a = models.BlogPost(subject=subject, blog=content, user=self.user,
                                  likes=0)
                 a.put()
                 i = a.key().id()
@@ -271,7 +192,7 @@ class CommentHandler(Handler):
     def get(self):
         if self.user:
             comment_id = self.request.GET.get("comment_id")
-            a = Comment.get_by_id(int(comment_id))
+            a = models.Comment.get_by_id(int(comment_id))
             content = a.comment
 
             self.render("comment.html", commend_id=comment_id, content=content)
@@ -283,7 +204,7 @@ class CommentHandler(Handler):
         content = self.request.get("content")
         content_error = ""
 
-        a = Comment.get_by_id(int(comment_id))
+        a = models.Comment.get_by_id(int(comment_id))
         i = a.blogpost.key().id()
         if self.request.get("delete"):  # check for delete
             a.deleted = True
@@ -306,7 +227,7 @@ class LikeHandler(Handler):
         comment_id = self.request.GET.get('comment_id')
         unlike = self.request.GET.get('unlike')
         if blog_id:
-            blogpost = BlogPost.get_by_id(int(blog_id))
+            blogpost = models.BlogPost.get_by_id(int(blog_id))
             if unlike:
                 print "unlike"
                 blogpost.unlike_post(self.user)
@@ -314,7 +235,7 @@ class LikeHandler(Handler):
                 blogpost.like_post(self.user)
             self.redirect("/%s" % blog_id)
         elif comment_id:
-            comment = Comment.get_by_id(int(comment_id))
+            comment = models.Comment.get_by_id(int(comment_id))
             blog_id = comment.blogpost.key().id()
             if unlike:
                 comment.unlike_comment(self.user)
@@ -345,7 +266,7 @@ class SignHandler(Handler):
             # hash password
             password = make_pw_hash(username, password)
             # save details to database
-            a = User(username=username, password=password, email=email)
+            a = models.User(username=username, password=password, email=email)
             a.put()
             i = "%d" % (a.key().id())
             self.login(i)
@@ -367,7 +288,7 @@ class LoginHandler(Handler):
         username = self.request.get("username")
         password = self.request.get("password")
 
-        user = User.all().filter("username =", username).get()
+        user = models.User.all().filter("username =", username).get()
         if user and valid_pw(username, password, user.password):
             i = "%d" % (user.key().id())
             self.login(i)
@@ -412,7 +333,7 @@ def valid_email(email):
 
 def matching_users(username):
     # check if username already exists
-    matching_users = User.all()
+    matching_users = models.User.all()
     matching_users = matching_users.filter("username = ", username).get()
     return matching_users
 
