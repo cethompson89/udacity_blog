@@ -1,12 +1,14 @@
 import models
 from handlers.base import Handler
-from helpers import check_details, make_pw_hash, check_valid_pw
+from helpers import check_details
+from decorators import login_required
 
 # **************   Individual page handlers   *********************
 
 
 class UserListHandler(Handler):
     # used to check users in app
+    @login_required
     def get(self):
         users = models.User.all().order("-created")
         self.render("userlist.html", users=users)
@@ -32,6 +34,7 @@ class PermalinkHandler(Handler):
         else:
             self.redirect("/")
 
+
     def post(self, blog_id):  # post comment
         comment = self.request.get("comment")
         blog_id = self.request.get("blog_id")
@@ -39,7 +42,8 @@ class PermalinkHandler(Handler):
         comment_error = ""
 
         if comment and self.user:
-            a = models.Comment(blogpost=blogpost, user=self.user, comment=comment, likes=0)
+            a = models.Comment(blogpost=blogpost, user=self.user,
+                               comment=comment, likes=0)
             a.put()
             self.redirect("/%s" % blog_id)
         else:
@@ -56,24 +60,23 @@ class PermalinkHandler(Handler):
 
 
 class NewPostHandler(Handler):
+    @login_required
     def get(self):
-        if not self.user:
-            self.redirect("/login?redirect=True")
+        blog_id = self.request.GET.get('blog_id')  # if editting post
+        subject = ""
+        content = ""
+
+        if blog_id:  # editing post
+            a = models.BlogPost.get_by_id(int(blog_id))
+            subject = a.subject
+            content = a.blog
         else:
-            blog_id = self.request.GET.get('blog_id')  # if editting post
-            subject = ""
-            content = ""
+            blog_id = ""
 
-            if blog_id:  # editing post
-                a = models.BlogPost.get_by_id(int(blog_id))
-                subject = a.subject
-                content = a.blog
-            else:
-                blog_id = ""
+        self.render("newpost.html", subject=subject, content=content,
+                    blog_id=blog_id)
 
-            self.render("newpost.html", subject=subject, content=content,
-                        blog_id=blog_id)
-
+    @login_required
     def post(self):
         subject = self.request.get("subject")
         content = self.request.get("content")
@@ -93,8 +96,8 @@ class NewPostHandler(Handler):
                     a = models.BlogPost.get_by_id(int(blog_id))
                     (a.subject, a.blog) = (subject, content)
                 else:
-                    a = models.BlogPost(subject=subject, blog=content, user=self.user,
-                                 likes=0)
+                    a = models.BlogPost(subject=subject, blog=content,
+                                        user=self.user, likes=0)
                 a.put()
                 i = a.key().id()
                 self.redirect("/%d" % i)
@@ -110,16 +113,15 @@ class NewPostHandler(Handler):
 
 
 class CommentHandler(Handler):
+    @login_required
     def get(self):
-        if self.user:
-            comment_id = self.request.GET.get("comment_id")
-            a = models.Comment.get_by_id(int(comment_id))
-            content = a.comment
+        comment_id = self.request.GET.get("comment_id")
+        a = models.Comment.get_by_id(int(comment_id))
+        content = a.comment
 
-            self.render("comment.html", commend_id=comment_id, content=content)
-        else:
-            self.redirect("/login?redirect=True")
+        self.render("comment.html", commend_id=comment_id, content=content)
 
+    @login_required
     def post(self):
         comment_id = self.request.get("comment_id")
         content = self.request.get("content")
@@ -143,6 +145,7 @@ class CommentHandler(Handler):
 
 class LikeHandler(Handler):
     # if post is liked add like to datastore and redirect
+    @login_required
     def get(self):
         blog_id = self.request.GET.get('blog_id')
         comment_id = self.request.GET.get('comment_id')
@@ -221,8 +224,6 @@ class LogoutHandler(Handler):
 
 
 class WelcomeHandler(Handler):
+    @login_required
     def get(self):
-        if self.user:
-            self.render("welcome.html", username=self.user.username)
-        else:
-            self.redirect("/signup")
+        self.render("welcome.html", username=self.user.username)

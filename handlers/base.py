@@ -45,7 +45,8 @@ class Handler(webapp2.RequestHandler):
         self.remove_cookie("user_id")
 
     def get_liked_posts(self):
-        liked_posts = models.BlogLikes.all().filter("user =", self.user).fetch(100)
+        liked_posts = (models.BlogLikes.all().filter("user =", self.user).
+                       fetch(100))
         i = []
         for post in liked_posts:
             i.append(post.blogpost.key().id())

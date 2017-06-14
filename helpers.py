@@ -6,6 +6,7 @@ import hashlib
 
 import models
 
+
 # create and test hash
 def make_secure_val(val):
     secret = "8pY#P#oILap52dQ4F97qtZwRq5VvZCE&"
