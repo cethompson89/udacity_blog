@@ -169,18 +169,18 @@ class LikeHandler(Handler):
             blogpost = models.BlogPost.get_by_id(int(blog_id))
             if blogpost:  # check it exists
                 if unlike:
-                    blogpost.unlike_post(self.user)
+                    blogpost.verify_and_unlike_post(self.user)
                 else:
-                    blogpost.like_post(self.user)
+                    blogpost.verify_and_like_post(self.user)
             self.redirect("/%s" % blog_id)
         elif comment_id:
             comment = models.Comment.get_by_id(int(comment_id))
             if comment:
                 blog_id = comment.blogpost.key().id()
                 if unlike:
-                    comment.unlike_comment(self.user)
+                    comment.verify_and_unlike_comment(self.user)
                 else:
-                    comment.like_comment(self.user)
+                    comment.verify_and_like_comment(self.user)
                 self.redirect("/%s" % blog_id)
             else:
                 self.redirect("/")

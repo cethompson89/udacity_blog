@@ -38,7 +38,7 @@ class BlogPost(db.Model):
         q.order("created")
         return q
 
-    def like_post(self, user):
+    def verify_and_like_post(self, user):
         if self.user.key().id() != user.key().id():
             a = (BlogLikes.all().filter("blogpost =", self).
                  filter("user =", user).get())
@@ -48,7 +48,7 @@ class BlogPost(db.Model):
                 self.likes += 1
                 self.put()
 
-    def unlike_post(self, user):
+    def verify_and_unlike_post(self, user):
         if self.user.key().id() != user.key().id():
             a = (BlogLikes.all().filter("blogpost =", self).
                  filter("user =", user).get())
@@ -66,7 +66,7 @@ class Comment(db.Model):
     likes = db.IntegerProperty(required=False)
     deleted = db.BooleanProperty(default=False)
 
-    def like_comment(self, user):
+    def verify_and_like_comment(self, user):
         if self.user.key().id() != user.key().id():
             a = (CommentLikes.all().filter("comment =", self).
                  filter("user =", user).get())
@@ -76,7 +76,7 @@ class Comment(db.Model):
                 self.likes += 1
                 self.put()
 
-    def unlike_comment(self, user):
+    def verify_and_unlike_comment(self, user):
         if self.user.key().id() != user.key().id():
             a = (CommentLikes.all().filter("comment =", self).
                  filter("user =", user).get())
