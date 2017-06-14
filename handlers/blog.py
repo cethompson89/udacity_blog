@@ -34,7 +34,6 @@ class PermalinkHandler(Handler):
         else:
             self.redirect("/")
 
-
     def post(self, blog_id):  # post comment
         comment = self.request.get("comment")
         blog_id = self.request.get("blog_id")
@@ -68,7 +67,8 @@ class NewPostHandler(Handler):
 
         if blog_id:  # editing post
             a = models.BlogPost.get_by_id(int(blog_id))
-            if a.user == self.user:  # check users match
+            # check users match
+            if a and a.user.key().id() == self.user.key().id():
                 subject = a.subject
                 content = a.blog
             else:
@@ -90,7 +90,8 @@ class NewPostHandler(Handler):
         if self.request.get("delete"):  # check for delete
             if blog_id:
                 a = models.BlogPost.get_by_id(int(blog_id))
-                if a.user == self.user:  # check users match
+                # check users match
+                if a and a.user.key().id() == self.user.key().id():
                     a.deleted = True
                     a.put()
             self.redirect("/")
@@ -98,7 +99,8 @@ class NewPostHandler(Handler):
             if subject and content:
                 if blog_id:  # editing post
                     a = models.BlogPost.get_by_id(int(blog_id))
-                    if a.user == self.user:  # check users match
+                # check users match
+                if a and a.user.key().id() == self.user.key().id():
                         (a.subject, a.blog) = (subject, content)
                 else:
                     a = models.BlogPost(subject=subject, blog=content,
@@ -122,11 +124,12 @@ class CommentHandler(Handler):
     def get(self):
         comment_id = self.request.GET.get("comment_id")
         a = models.Comment.get_by_id(int(comment_id))
-        if a and a.user == self.user:  # check users match
+        # check users match
+        if a and a.user.key().id() == self.user.key().id():
             content = a.comment
+            self.render("comment.html", comment_id=comment_id, content=content)
         else:
-            comment_id = ""
-        self.render("comment.html", commend_id=comment_id, content=content)
+            self.redirect("/")
 
     @login_required
     def post(self):
@@ -135,7 +138,8 @@ class CommentHandler(Handler):
         content_error = ""
 
         a = models.Comment.get_by_id(int(comment_id))
-        if a and a.user == self.user:  # check users match
+        # check users match
+        if a and a.user.key().id() == self.user.key().id():
             i = a.blogpost.key().id()
             if self.request.get("delete"):  # check for delete
                 a.deleted = True
@@ -147,8 +151,8 @@ class CommentHandler(Handler):
                 self.redirect("/%d" % i)
             else:
                 content_error = "Please add content"
-                self.render("comment.html", commend_id=comment_id, content=content,
-                            content_error=content_error)
+                self.render("comment.html", commend_id=comment_id,
+                            content=content, content_error=content_error)
         else:
             self.redirect("/")
 
