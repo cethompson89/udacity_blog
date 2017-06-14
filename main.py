@@ -35,6 +35,29 @@ class BlogPost(db.Model):
     likes = db.IntegerProperty(required=False)
     deleted = db.BooleanProperty(default=False)
 
+    def get_comments(self):
+        q = (Comment.all().filter("blogpost =", self).
+             filter("deleted =", False))
+        q.order("created")
+        return q
+
+    def like_post(self, user):
+        a = (BlogLikes.all().filter("blogpost =", self).
+             filter("user =", user).get())
+        if not a:  # only action is it's not there
+            a = BlogLikes(blogpost=self, user=user)
+            a.put()
+            self.likes += 1
+            self.put()
+
+    def unlike_post(self, user):
+        a = (BlogLikes.all().filter("blogpost =", self).
+             filter("user =", user).get())
+        if a:
+            a.delete()
+            self.likes += -1
+            self.put()
+
 
 class Comment(db.Model):
     blogpost = db.ReferenceProperty(BlogPost, collection_name='blogpost')
@@ -43,6 +66,23 @@ class Comment(db.Model):
     created = db.DateTimeProperty(auto_now_add=True)
     likes = db.IntegerProperty(required=False)
     deleted = db.BooleanProperty(default=False)
+
+    def like_comment(self, user):
+        a = (CommentLikes.all().filter("comment =", self).
+             filter("user =", user).get())
+        if not a:  # only action is it's not there
+            a = CommentLikes(comment=self, user=user)
+            a.put()
+            self.likes += 1
+            self.put()
+
+    def unlike_comment(self, user):
+        a = (CommentLikes.all().filter("comment =", self).
+             filter("user =", user).get())
+        if a:
+            a.delete()
+            self.likes += -1
+            self.put()
 
 
 class BlogLikes(db.Model):
@@ -117,42 +157,6 @@ class Handler(webapp2.RequestHandler):
             (self.user, self.liked_posts, self.liked_comments) = (None, None,
                                                                   None)
 
-    def get_comments(self, blogpost):
-        q = (Comment.all().filter("blogpost =", blogpost).
-             filter("deleted =", False))
-        q.order("created")
-        return q
-
-    def like_post(self, blogpost):
-        blogpost.likes += 1
-        blogpost.put()
-
-        a = BlogLikes(blogpost=blogpost, user=self.user)
-        a.put()
-
-    def like_comment(self, comment):
-        comment.likes += 1
-        comment.put()
-
-        a = CommentLikes(comment=comment, user=self.user)
-        a.put()
-
-    def unlike_post(self, blogpost):
-        blogpost.likes += -1
-        blogpost.put()
-
-        a = (BlogLikes.all().filter("blogpost =", blogpost).
-             filter("user =", self.user).get())
-        a.delete()
-
-    def unlike_comment(self, comment):
-        comment.likes += -1
-        comment.put()
-
-        a = (CommentLikes.all().filter("comment =", comment).
-             filter("user =", self.user).get())
-        a.delete()
-
 
 # **************   Individual page handlers   *********************
 
@@ -178,7 +182,7 @@ class PermalinkHandler(Handler):
     def get(self, blog_id):
         blogpost = BlogPost.get_by_id(int(blog_id))
         if blogpost:
-            blog_comments = self.get_comments(blogpost)
+            blog_comments = blogpost.get_comments()
             self.render("blogposts.html", blogposts=[blogpost],
                         blog_comments=blog_comments, single=True,
                         blog_id=blog_id)
@@ -197,7 +201,7 @@ class PermalinkHandler(Handler):
             a.put()
             self.redirect("/%s" % blog_id)
         else:
-            blog_comments = self.get_comments(blogpost)
+            blog_comments = blogpost.get_comments()
             if not comment:
                 comment_error = "Yo, Robobuddy - you gotta add some text"
             if not user:
@@ -305,17 +309,17 @@ class LikeHandler(Handler):
             blogpost = BlogPost.get_by_id(int(blog_id))
             if unlike:
                 print "unlike"
-                self.unlike_post(blogpost)
+                blogpost.unlike_post(self.user)
             else:
-                self.like_post(blogpost)
+                blogpost.like_post(self.user)
             self.redirect("/%s" % blog_id)
         elif comment_id:
             comment = Comment.get_by_id(int(comment_id))
             blog_id = comment.blogpost.key().id()
             if unlike:
-                self.unlike_comment(comment)
+                comment.unlike_comment(self.user)
             else:
-                self.like_comment(comment)
+                comment.like_comment(self.user)
             self.redirect("/%s" % blog_id)
         else:
             self.redirect("/")
