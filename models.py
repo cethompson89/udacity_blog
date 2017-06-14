@@ -39,13 +39,14 @@ class BlogPost(db.Model):
         return q
 
     def like_post(self, user):
-        a = (BlogLikes.all().filter("blogpost =", self).
-             filter("user =", user).get())
-        if not a:  # only action is it's not there
-            a = BlogLikes(blogpost=self, user=user)
-            a.put()
-            self.likes += 1
-            self.put()
+        if self.user != user:
+            a = (BlogLikes.all().filter("blogpost =", self).
+                 filter("user =", user).get())
+            if not a:  # only action is it's not there
+                a = BlogLikes(blogpost=self, user=user)
+                a.put()
+                self.likes += 1
+                self.put()
 
     def unlike_post(self, user):
         a = (BlogLikes.all().filter("blogpost =", self).

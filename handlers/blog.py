@@ -68,8 +68,11 @@ class NewPostHandler(Handler):
 
         if blog_id:  # editing post
             a = models.BlogPost.get_by_id(int(blog_id))
-            subject = a.subject
-            content = a.blog
+            if a.user == self.user:  # check users match
+                subject = a.subject
+                content = a.blog
+            else:
+                blog_id = ""
         else:
             blog_id = ""
 
@@ -87,14 +90,16 @@ class NewPostHandler(Handler):
         if self.request.get("delete"):  # check for delete
             if blog_id:
                 a = models.BlogPost.get_by_id(int(blog_id))
-                a.deleted = True
-                a.put()
+                if a.user == self.user:  # check users match
+                    a.deleted = True
+                    a.put()
             self.redirect("/")
         else:
             if subject and content:
                 if blog_id:  # editing post
                     a = models.BlogPost.get_by_id(int(blog_id))
-                    (a.subject, a.blog) = (subject, content)
+                    if a.user == self.user:  # check users match
+                        (a.subject, a.blog) = (subject, content)
                 else:
                     a = models.BlogPost(subject=subject, blog=content,
                                         user=self.user, likes=0)
@@ -117,8 +122,10 @@ class CommentHandler(Handler):
     def get(self):
         comment_id = self.request.GET.get("comment_id")
         a = models.Comment.get_by_id(int(comment_id))
-        content = a.comment
-
+        if a and a.user == self.user:  # check users match
+            content = a.comment
+        else:
+            comment_id = ""
         self.render("comment.html", commend_id=comment_id, content=content)
 
     @login_required
@@ -128,19 +135,22 @@ class CommentHandler(Handler):
         content_error = ""
 
         a = models.Comment.get_by_id(int(comment_id))
-        i = a.blogpost.key().id()
-        if self.request.get("delete"):  # check for delete
-            a.deleted = True
-            a.put()
-            self.redirect("/%d" % i)
-        elif content:
-            a.comment = content
-            a.put()
-            self.redirect("/%d" % i)
+        if a and a.user == self.user:  # check users match
+            i = a.blogpost.key().id()
+            if self.request.get("delete"):  # check for delete
+                a.deleted = True
+                a.put()
+                self.redirect("/%d" % i)
+            elif content:
+                a.comment = content
+                a.put()
+                self.redirect("/%d" % i)
+            else:
+                content_error = "Please add content"
+                self.render("comment.html", commend_id=comment_id, content=content,
+                            content_error=content_error)
         else:
-            content_error = "Please add content"
-            self.render("comment.html", commend_id=comment_id, content=content,
-                        content_error=content_error)
+            self.redirect("/")
 
 
 class LikeHandler(Handler):
@@ -150,21 +160,26 @@ class LikeHandler(Handler):
         blog_id = self.request.GET.get('blog_id')
         comment_id = self.request.GET.get('comment_id')
         unlike = self.request.GET.get('unlike')
+
         if blog_id:
             blogpost = models.BlogPost.get_by_id(int(blog_id))
-            if unlike:
-                blogpost.unlike_post(self.user)
-            else:
-                blogpost.like_post(self.user)
+            if blogpost:  # check it exists
+                if unlike:
+                    blogpost.unlike_post(self.user)
+                else:
+                    blogpost.like_post(self.user)
             self.redirect("/%s" % blog_id)
         elif comment_id:
             comment = models.Comment.get_by_id(int(comment_id))
-            blog_id = comment.blogpost.key().id()
-            if unlike:
-                comment.unlike_comment(self.user)
+            if comment:
+                blog_id = comment.blogpost.key().id()
+                if unlike:
+                    comment.unlike_comment(self.user)
+                else:
+                    comment.like_comment(self.user)
+                self.redirect("/%s" % blog_id)
             else:
-                comment.like_comment(self.user)
-            self.redirect("/%s" % blog_id)
+                self.redirect("/")
         else:
             self.redirect("/")
 
