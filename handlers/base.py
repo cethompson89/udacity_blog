@@ -2,6 +2,7 @@ import jinja2
 import webapp2
 
 import models
+from helpers import make_secure_val, check_secure_val
 from main import template_dir
 
 
@@ -69,21 +70,3 @@ class Handler(webapp2.RequestHandler):
             self.user = None
             self.liked_posts = None
             self.liked_comments = None
-
-
-# create and test hash
-import hmac
-secret = "8pY#P#oILap52dQ4F97qtZwRq5VvZCE&"
-
-def make_secure_val(val):
-    return "%s|%s" % (val, hmac.new(secret, val).hexdigest())
-
-
-def check_secure_val(secure_val):
-    if secure_val:
-        try:
-            val = secure_val.split('|')[0]
-        except:
-            return None
-        if secure_val == make_secure_val(val):
-            return val
