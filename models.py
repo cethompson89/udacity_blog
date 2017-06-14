@@ -1,4 +1,5 @@
 from google.appengine.ext import db
+from helpers import make_pw_hash, check_valid_pw
 
 # **************   create google app entities   *********************
 
@@ -8,6 +9,19 @@ class User(db.Model):
     email = db.StringProperty(required=False)
     password = db.StringProperty(required=True)
     created = db.DateTimeProperty(auto_now_add=True)
+
+    @classmethod
+    def create_user(cls, username, password, email=None):
+        pw_hash = make_pw_hash(username, password)  # hash pw
+        a = cls(username=username, password=pw_hash, email=email)
+        a.put()
+        return "%d" % (a.key().id())
+
+    @classmethod
+    def validate_user(cls, username, password):
+        user = cls.all().filter("username =", username).get()
+        if user and check_valid_pw(username, password, user.password):
+            return "%d" % (user.key().id())
 
 
 class BlogPost(db.Model):

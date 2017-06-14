@@ -32,7 +32,7 @@ class PermalinkHandler(Handler):
         else:
             self.redirect("/")
 
-    def post(self, blog_id):
+    def post(self, blog_id):  # post comment
         comment = self.request.get("comment")
         blog_id = self.request.get("blog_id")
         blogpost = models.BlogPost.get_by_id(int(blog_id))
@@ -150,7 +150,6 @@ class LikeHandler(Handler):
         if blog_id:
             blogpost = models.BlogPost.get_by_id(int(blog_id))
             if unlike:
-                print "unlike"
                 blogpost.unlike_post(self.user)
             else:
                 blogpost.like_post(self.user)
@@ -184,12 +183,8 @@ class SignHandler(Handler):
                                                     verify, email)
 
         if redirect:
-            # hash password
-            password = make_pw_hash(username, password)
-            # save details to database
-            a = models.User(username=username, password=password, email=email)
-            a.put()
-            i = "%d" % (a.key().id())
+            i = models.User.create_user(username=username, password=password,
+                                        email=email)
             self.login(i)
             self.redirect("/welcome")
         else:
@@ -209,9 +204,8 @@ class LoginHandler(Handler):
         username = self.request.get("username")
         password = self.request.get("password")
 
-        user = models.User.all().filter("username =", username).get()
-        if user and check_valid_pw(username, password, user.password):
-            i = "%d" % (user.key().id())
+        i = models.User.validate_user(username, password)
+        if i:
             self.login(i)
             self.redirect("/welcome")
         else:
