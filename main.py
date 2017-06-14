@@ -5,11 +5,12 @@ import re
 import random
 import hashlib
 
-
 import jinja2
 import webapp2
 
 from google.appengine.ext import db
+
+
 
 secret = "8pY#P#oILap52dQ4F97qtZwRq5VvZCE&"
 
@@ -193,18 +194,17 @@ class PermalinkHandler(Handler):
         comment = self.request.get("comment")
         blog_id = self.request.get("blog_id")
         blogpost = BlogPost.get_by_id(int(blog_id))
-        user = self.user
         comment_error = ""
 
-        if comment and user:
-            a = Comment(blogpost=blogpost, user=user, comment=comment, likes=0)
+        if comment and self.user:
+            a = Comment(blogpost=blogpost, user=self.user, comment=comment, likes=0)
             a.put()
             self.redirect("/%s" % blog_id)
         else:
             blog_comments = blogpost.get_comments()
             if not comment:
                 comment_error = "Yo, Robobuddy - you gotta add some text"
-            if not user:
+            if not self.user:
                 comment_error = ("Yo Robobuddy - log in so we know you're " +
                                  "not a treacherous human")
             self.render("blogposts.html", blogposts=[blogpost],
