@@ -99,8 +99,8 @@ class NewPostHandler(Handler):
             if subject and content:
                 if blog_id:  # editing post
                     a = models.BlogPost.get_by_id(int(blog_id))
-                # check users match
-                if a and a.user.key().id() == self.user.key().id():
+                    # check users match
+                    if a and a.user.key().id() == self.user.key().id():
                         (a.subject, a.blog) = (subject, content)
                 else:
                     a = models.BlogPost(subject=subject, blog=content,
