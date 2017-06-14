@@ -39,7 +39,7 @@ class BlogPost(db.Model):
         return q
 
     def like_post(self, user):
-        if self.user != user:
+        if self.user.key().id() != user.key().id():
             a = (BlogLikes.all().filter("blogpost =", self).
                  filter("user =", user).get())
             if not a:  # only action is it's not there
@@ -49,12 +49,13 @@ class BlogPost(db.Model):
                 self.put()
 
     def unlike_post(self, user):
-        a = (BlogLikes.all().filter("blogpost =", self).
-             filter("user =", user).get())
-        if a:
-            a.delete()
-            self.likes += -1
-            self.put()
+        if self.user.key().id() != user.key().id():
+            a = (BlogLikes.all().filter("blogpost =", self).
+                 filter("user =", user).get())
+            if a:
+                a.delete()
+                self.likes += -1
+                self.put()
 
 
 class Comment(db.Model):
@@ -66,21 +67,23 @@ class Comment(db.Model):
     deleted = db.BooleanProperty(default=False)
 
     def like_comment(self, user):
-        a = (CommentLikes.all().filter("comment =", self).
-             filter("user =", user).get())
-        if not a:  # only action is it's not there
-            a = CommentLikes(comment=self, user=user)
-            a.put()
-            self.likes += 1
-            self.put()
+        if self.user.key().id() != user.key().id():
+            a = (CommentLikes.all().filter("comment =", self).
+                 filter("user =", user).get())
+            if not a:  # only action is it's not there
+                a = CommentLikes(comment=self, user=user)
+                a.put()
+                self.likes += 1
+                self.put()
 
     def unlike_comment(self, user):
-        a = (CommentLikes.all().filter("comment =", self).
-             filter("user =", user).get())
-        if a:
-            a.delete()
-            self.likes += -1
-            self.put()
+        if self.user.key().id() != user.key().id():
+            a = (CommentLikes.all().filter("comment =", self).
+                 filter("user =", user).get())
+            if a:
+                a.delete()
+                self.likes += -1
+                self.put()
 
 
 class BlogLikes(db.Model):
